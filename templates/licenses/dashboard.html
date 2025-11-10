@@ -120,7 +120,7 @@
                                             {% if is_superuser %}
                                                 <td class="text-center text-nowrap">
                                                     <button type="button" class="btn btn-warning btn-sm" data-bs-toggle="modal" data-bs-target="#extendModal-{{ license.pk }}">Gia hạn</button>
-                                                    <a class="btn btn-danger btn-sm" href="{% url 'licenses:delete' license.pk %}">Xóa</a>
+                                                    <button type="button" class="btn btn-danger btn-sm" data-bs-toggle="modal" data-bs-target="#deleteModal-{{ license.pk }}">Xóa</button>
                                                 </td>
                                             {% endif %}
                                         </tr>
@@ -172,7 +172,7 @@
                                                 <div class="border-top pt-2 mt-2">
                                                     <div class="d-flex gap-1">
                                                         <button type="button" class="btn btn-warning flex-fill" data-bs-toggle="modal" data-bs-target="#extendModal-{{ license.pk }}">Gia hạn</button>
-                                                        <a class="btn btn-danger flex-fill" href="{% url 'licenses:delete' license.pk %}">Xóa</a>
+                                                        <button type="button" class="btn btn-danger flex-fill" data-bs-toggle="modal" data-bs-target="#deleteModal-{{ license.pk }}">Xóa</button>
                                                     </div>
                                                 </div>
                                             {% endif %}
@@ -210,6 +210,29 @@
                                             <div class="modal-footer">
                                                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
                                                 <button type="submit" class="btn btn-warning">Cập nhật</button>
+                                            </div>
+                                        </form>
+                                    </div>
+                                </div>
+                            </div>
+                        {% endfor %}
+                        {% for license in licenses %}
+                            <div class="modal fade" id="deleteModal-{{ license.pk }}" tabindex="-1" aria-labelledby="deleteModalLabel-{{ license.pk }}" aria-hidden="true">
+                                <div class="modal-dialog modal-dialog-centered">
+                                    <div class="modal-content">
+                                        <div class="modal-header">
+                                            <h5 class="modal-title" id="deleteModalLabel-{{ license.pk }}">Xác nhận xóa</h5>
+                                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                        </div>
+                                        <form method="post" action="{% url 'licenses:delete' license.pk %}">
+                                            <div class="modal-body">
+                                                {% csrf_token %}
+                                                <p class="mb-0">Bạn có chắc chắn muốn xóa license của số <strong>{{ license.phone_number }}</strong>?</p>
+                                                <small class="text-muted">Mã: <code style="word-break: break-all;">{{ license.code }}</code></small>
+                                            </div>
+                                            <div class="modal-footer">
+                                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
+                                                <button type="submit" class="btn btn-danger">Xóa</button>
                                             </div>
                                         </form>
                                     </div>

@@ -15,5 +15,6 @@ urlpatterns = [
     path('update', views.update_license_api, name='update_api'),
     path('delete', views.delete_license_api, name='delete_api'),
     path('delete-all', views.delete_all_license_api, name='delete_all_api'),
+    path('users/create', views.api_create_user, name='api_create_user'),
 ]
 

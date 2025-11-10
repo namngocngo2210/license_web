@@ -221,6 +221,22 @@ input[type="checkbox"] {
     margin: 0 auto;
 }
 
+.login-avatar {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background: rgba(63, 81, 181, 0.08);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+}
+.login-avatar img {
+    width: 70%;
+    height: auto;
+    display: block;
+}
+
 @media (max-width: 576px) {
     .login-wrapper {
         padding: 2.5rem 1rem;

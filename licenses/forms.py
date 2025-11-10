@@ -4,6 +4,7 @@ from django import forms
 from django.utils import timezone
 
 from .models import License
+from django.contrib.auth import get_user_model
 
 
 class LicenseCreateForm(forms.Form):
@@ -21,6 +22,17 @@ class LicenseCreateForm(forms.Form):
     def __init__(self, *args, owner=None, **kwargs):
         super().__init__(*args, **kwargs)
         self.owner = owner
+        # Superuser can choose target owner to create licenses for
+        if self.owner and getattr(self.owner, 'is_superuser', False):
+            User = get_user_model()
+            choices = [(str(u.id), u.username) for u in User.objects.order_by('username').only('id', 'username')]
+            self.fields['owner_id'] = forms.ChoiceField(
+                choices=choices,
+                required=False,
+                label='Người dùng',
+                widget=forms.Select(attrs={'class': 'form-select'}),
+                help_text='Để trống để tạo cho chính bạn.',
+            )
 
     def _parse_numbers(self):
         raw = self.cleaned_data['phone_numbers']
@@ -38,13 +50,20 @@ class LicenseCreateForm(forms.Form):
         expired_at = timezone.now() + timedelta(days=expires_in)
         created = []
         skipped = []
+        target_owner = self.owner
+        if getattr(self.owner, 'is_superuser', False) and 'owner_id' in self.cleaned_data and self.cleaned_data.get('owner_id'):
+            User = get_user_model()
+            try:
+                target_owner = User.objects.get(id=int(self.cleaned_data['owner_id']))
+            except (User.DoesNotExist, ValueError, TypeError):
+                target_owner = self.owner
         for phone_number in self._parse_numbers():
             if License.objects.filter(phone_number=phone_number).exists():
                 skipped.append(phone_number)
                 continue
             created.append(
                 License.objects.create(
-                    owner=self.owner,
+                    owner=target_owner,
                     phone_number=phone_number,
                     expired_at=expired_at,
                 )
@@ -70,4 +89,15 @@ class LicenseExtendForm(forms.Form):
         self.license_obj.expired_at = timezone.now() + timedelta(days=expires_in)
         self.license_obj.save(update_fields=['expired_at', 'updated_at'])
         return self.license_obj
+
+
+class ProfileForm(forms.ModelForm):
+    class Meta:
+        model = get_user_model()
+        fields = ['first_name', 'last_name', 'email']
+        widgets = {
+            'first_name': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Tên'}),
+            'last_name': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Họ'}),
+            'email': forms.EmailInput(attrs={'class': 'form-control', 'placeholder': 'Email'}),
+        }
 

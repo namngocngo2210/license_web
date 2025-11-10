@@ -4,15 +4,24 @@
 
 {% block content %}
 <div class="row justify-content-center">
-    <div class="col-md-6">
-        <div class="card border-danger">
-            <div class="card-header bg-danger text-white">
-                Xóa license
+    <div class="col-lg-5">
+        <div class="md-card">
+            <div class="md-card-header">
+                <h5 class="mb-1 text-danger fw-semibold">Xóa license</h5>
+                <p class="card-subtitle mb-0">Thao tác này không thể hoàn tác</p>
             </div>
-            <div class="card-body">
-                <p>Bạn có chắc chắn muốn xóa license của <strong>{{ license.phone_number }}</strong>?</p>
-                <p><strong>Mã:</strong> <code>{{ license.code }}</code></p>
-                <form method="post">
+            <div class="md-card-body d-grid gap-3">
+                <div class="p-3 rounded-3 bg-light">
+                    <p class="mb-2 text-muted small">Số điện thoại</p>
+                    <h6 class="fw-semibold">{{ license.phone_number }}</h6>
+                    <div class="divider"></div>
+                    <p class="mb-2 text-muted small">Mã license</p>
+                    <code class="d-block">{{ license.code }}</code>
+                </div>
+                <p class="mb-0 text-muted">
+                    Bạn có chắc chắn muốn xóa license này? License sẽ bị xóa vĩnh viễn khỏi hệ thống.
+                </p>
+                <form method="post" class="d-flex flex-wrap gap-2">
                     {% csrf_token %}
                     <button type="submit" class="btn btn-danger">Xóa</button>
                     <a href="{% url 'licenses:dashboard' %}" class="btn btn-secondary">Hủy</a>

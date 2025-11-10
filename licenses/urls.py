@@ -6,7 +6,7 @@ app_name = 'licenses'
 
 urlpatterns = [
     path('', views.dashboard, name='dashboard'),
-    path('register/', views.register, name='register'),
+    path('profile/', views.profile, name='profile'),
     path('licenses/<int:pk>/extend/', views.extend_license, name='extend'),
     path('licenses/<int:pk>/delete/', views.delete_license, name='delete'),
     path('verify', views.verify_license, name='verify'),

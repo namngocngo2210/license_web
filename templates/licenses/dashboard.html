@@ -3,75 +3,386 @@
 {% block title %}Bảng điều khiển{% endblock %}
 
 {% block content %}
-<div class="row">
-    <div class="col-md-5">
-        <div class="card mb-4" id="create">
-            <div class="card-header">
-                Tạo License
-            </div>
-            <div class="card-body">
-                <form method="post">
-                    {% csrf_token %}
-                    {% for field in form %}
-                        <div class="mb-3">
-                            <label for="{{ field.id_for_label }}" class="form-label">{{ field.label }}</label>
-                            {{ field }}
-                            {% for error in field.errors %}
-                                <div class="text-danger">{{ error }}</div>
-                            {% endfor %}
+<div class="container-fluid">
+<div class="row g-4 align-items-start">
+    <div class="col-12">
+        <div class="md-card" id="list">
+            <div class="md-card-header d-grid gap-3">
+                <div class="d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-3">
+                    <div>
+                        <h5 class="mb-1 fw-semibold">Danh sách license</h5>
+                        <p class="card-subtitle mb-0">Quản lý, gia hạn và xóa các license đã tạo</p>
+                    </div>
+                    {% if is_superuser %}
+                        <div>
+                            <button class="btn btn-primary btn-sm js-loading" data-bs-toggle="modal" data-bs-target="#createLicenseModal">
+                                Thêm license
+                            </button>
                         </div>
-                    {% endfor %}
-                    <button type="submit" class="btn btn-success">Tạo</button>
+                    {% endif %}
+                </div>
+                <form method="get" class="row g-2 align-items-end">
+                    <div class="col-12 col-md">
+                        <label class="form-label">Tìm kiếm</label>
+                        <input type="text" name="q" value="{{ filters.q }}" class="form-control" placeholder="SĐT hoặc mã license">
+                    </div>
+                    <div class="col-6 col-md-2">
+                        <label class="form-label">Trạng thái</label>
+                        <select name="status" class="form-select">
+                            <option value="">Tất cả</option>
+                            <option value="active" {% if filters.status == 'active' %}selected{% endif %}>Hoạt động</option>
+                            <option value="expired" {% if filters.status == 'expired' %}selected{% endif %}>Hết hạn</option>
+                        </select>
+                    </div>
+                    <div class="col-6 col-md-2">
+                        <label class="form-label">Từ (ngày)</label>
+                        <input type="number" class="form-control" name="days_min" value="{{ filters.days_min }}" min="0" placeholder="VD: 0">
+                    </div>
+                    <div class="col-6 col-md-2">
+                        <label class="form-label">Đến (ngày)</label>
+                        <input type="number" class="form-control" name="days_max" value="{{ filters.days_max }}" min="0" placeholder="VD: 30">
+                    </div>
+                    {% if is_superuser %}
+                        <div class="col-6 col-md-2">
+                            <label class="form-label">Người dùng</label>
+                            <select name="user_id" class="form-select">
+                                <option value="">Tất cả</option>
+                                {% for u in users %}
+                                    <option value="{{ u.id }}" {% if filters.user_id|add:'' == u.id|add:'' %}selected{% endif %}>{{ u.username }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    {% endif %}
+                    <div class="col-12 col-md-auto">
+                        <button type="submit" class="btn btn-primary">Lọc</button>
+                    </div>
                 </form>
             </div>
-        </div>
-    </div>
-    <div class="col-md-7">
-        <div class="card" id="list">
-            <div class="card-header">
-                License của bạn
-            </div>
-            <div class="card-body">
+            <div class="md-card-body">
                 {% if licenses %}
-                    <div class="table-responsive">
-                        <table class="table table-striped">
-                            <thead>
-                                <tr>
-                                    <th>Số điện thoại</th>
-                                    <th>Mã</th>
-                                    <th>Hết hạn</th>
-                                    <th>Trạng thái</th>
-                                    <th></th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for license in licenses %}
-                                    <tr>
-                                        <td><span class="badge bg-secondary">{{ license.phone_number }}</span></td>
-                                        <td><code>{{ license.code }}</code></td>
-                                        <td>{{ license.expired_at|date:"Y-m-d H:i" }}</td>
-                                        <td>
-                                            {% if license.is_expired %}
-                                                <span class="badge bg-danger">Hết hạn</span>
-                                            {% else %}
-                                                <span class="badge bg-success">Hoạt động</span>
-                                            {% endif %}
-                                        </td>
-                                        <td class="text-end">
-                                            <a class="btn btn-sm btn-warning" href="{% url 'licenses:extend' license.pk %}">Gia hạn</a>
-                                            <a class="btn btn-sm btn-danger" href="{% url 'licenses:delete' license.pk %}">Xóa</a>
-                                        </td>
-                                    </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
+                    <form method="post" class="d-grid gap-3">
+                        {% csrf_token %}
+                        {% if is_superuser %}
+                            <input type="hidden" name="action" value="delete_selected">
+                            <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mt-2">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="select-all">
+                                    <label class="form-check-label text-muted" for="select-all">
+                                        Chọn tất cả
+                                    </label>
+                                </div>
+                                <button type="submit" class="btn btn-danger btn-sm btn-icon ms-auto mt-2 mt-md-0" id="delete-selected-btn" disabled>
+                                    Xóa các license đã chọn
+                                </button>
+                            </div>
+                        {% endif %}
+                {% if not is_superuser %}
+                    <div class="alert alert-info mt-3 mb-0">
+                        <div class="d-flex flex-wrap align-items-center gap-2">
+                            <span class="small">API Key của bạn:</span>
+                            <code class="text-break">{{ request.user.api_key.key }}</code>
+                        </div>
                     </div>
+                {% endif %}
+                        <!-- Desktop/tablet: bảng -->
+                        <div class="material-table d-none d-md-block">
+                            <table class="table align-middle mb-0">
+                                <thead>
+                                    <tr>
+                                        {% if is_superuser %}<th class="text-center" style="width:56px;"></th>{% endif %}
+                                        <th class="text-center" style="width:18%;">Số điện thoại</th>
+                                        <th class="text-center" style="width:30%;">Mã license</th>
+                                        <th class="text-center" style="width:18%;">Hết hạn</th>
+                                        <th class="text-center" style="width:12%;">Trạng thái</th>
+                                        {% if is_superuser %}<th class="text-center" style="width:12%;">Chủ sở hữu</th>{% endif %}
+                                        {% if is_superuser %}<th class="text-center text-nowrap" style="width:14%;">Hành động</th>{% endif %}
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for license in licenses %}
+                                        <tr>
+                                            {% if is_superuser %}
+                                                <td class="text-center">
+                                                    <input class="form-check-input license-checkbox" type="checkbox" name="selected_ids" value="{{ license.id }}">
+                                                </td>
+                                            {% endif %}
+                                            <td class="text-center"><span class="chip">{{ license.phone_number }}</span></td>
+                                            <td class="text-center text-break"><code style="word-break: break-all;">{{ license.code }}</code></td>
+                                            <td class="text-center text-nowrap">{{ license.expired_at|date:"d/m/Y H:i" }}</td>
+                                            <td class="text-center">
+                                                {% if license.is_expired %}
+                                                    <span class="badge bg-danger">Hết hạn</span>
+                                                {% else %}
+                                                    <span class="badge bg-success">Hoạt động</span>
+                                                {% endif %}
+                                            </td>
+                                            {% if is_superuser %}<td class="text-center text-muted small">{{ license.owner.username }}</td>{% endif %}
+                                            {% if is_superuser %}
+                                                <td class="text-center text-nowrap">
+                                                    <button type="button" class="btn btn-warning btn-sm" data-bs-toggle="modal" data-bs-target="#extendModal-{{ license.pk }}">Gia hạn</button>
+                                                    <a class="btn btn-danger btn-sm" href="{% url 'licenses:delete' license.pk %}">Xóa</a>
+                                                </td>
+                                            {% endif %}
+                                        </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        <!-- Mobile: danh sách dọc -->
+                        <div class="d-md-none">
+                            <div class="d-grid gap-2">
+                                {% for license in licenses %}
+                                    <div class="md-card p-0">
+                                        <div class="md-card-body">
+                                            <div class="d-flex align-items-start justify-content-between mb-2">
+                                                <div class="flex-grow-1">
+                                                    {% if is_superuser %}
+                                                        <span class="text-muted small d-block">Chủ sở hữu</span>
+                                                        <span class="text-muted small">{{ license.owner.username }}</span>
+                                                        <div class="divider"></div>
+                                                    {% endif %}
+                                                    <div class="mb-1">
+                                                        <span class="text-muted small d-block">Số điện thoại</span>
+                                                        <span class="chip">{{ license.phone_number }}</span>
+                                                    </div>
+                                                    <div class="mb-1">
+                                                        <span class="text-muted small d-block">Mã license</span>
+                                                        <code style="word-break: break-all;">{{ license.code }}</code>
+                                                    </div>
+                                                    <div class="mb-1">
+                                                        <span class="text-muted small d-block">Hết hạn</span>
+                                                        <span class="text-nowrap">{{ license.expired_at|date:"d/m/Y H:i" }}</span>
+                                                    </div>
+                                                    <div>
+                                                        <span class="text-muted small d-block">Trạng thái</span>
+                                                        {% if license.is_expired %}
+                                                            <span class="badge bg-danger">Hết hạn</span>
+                                                        {% else %}
+                                                            <span class="badge bg-success">Hoạt động</span>
+                                                        {% endif %}
+                                                    </div>
+                                                </div>
+                                                {% if is_superuser %}
+                                                    <div class="form-check ms-2">
+                                                        <input class="form-check-input license-checkbox" type="checkbox" name="selected_ids" value="{{ license.id }}">
+                                                    </div>
+                                                {% endif %}
+                                            </div>
+                                            {% if is_superuser %}
+                                                <div class="border-top pt-2 mt-2">
+                                                    <div class="d-flex gap-1">
+                                                        <button type="button" class="btn btn-warning flex-fill" data-bs-toggle="modal" data-bs-target="#extendModal-{{ license.pk }}">Gia hạn</button>
+                                                        <a class="btn btn-danger flex-fill" href="{% url 'licenses:delete' license.pk %}">Xóa</a>
+                                                    </div>
+                                                </div>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                        <!-- Modals gia hạn cho từng license -->
+                        {% if is_superuser %}
+                        {% for license in licenses %}
+                            <div class="modal fade" id="extendModal-{{ license.pk }}" tabindex="-1" aria-labelledby="extendModalLabel-{{ license.pk }}" aria-hidden="true">
+                                <div class="modal-dialog modal-dialog-centered">
+                                    <div class="modal-content">
+                                        <div class="modal-header">
+                                            <h5 class="modal-title" id="extendModalLabel-{{ license.pk }}">Gia hạn license</h5>
+                                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                        </div>
+                                        <form method="post" action="{% url 'licenses:extend' license.pk %}">
+                                            <div class="modal-body">
+                                                {% csrf_token %}
+                                                <div class="mb-3">
+                                                    <label class="form-label">Số điện thoại</label>
+                                                    <input type="text" class="form-control" value="{{ license.phone_number }}" disabled>
+                                                </div>
+                                                <div class="mb-3">
+                                                    <label class="form-label">Mã license</label>
+                                                    <input type="text" class="form-control" value="{{ license.code }}" disabled>
+                                                </div>
+                                                <div class="mb-3">
+                                                    <label for="expires_in_{{ license.pk }}" class="form-label">Gia hạn thêm (ngày)</label>
+                                                    <input type="number" min="1" name="expires_in" id="expires_in_{{ license.pk }}" class="form-control" placeholder="Số ngày">
+                                                </div>
+                                            </div>
+                                            <div class="modal-footer">
+                                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
+                                                <button type="submit" class="btn btn-warning">Cập nhật</button>
+                                            </div>
+                                        </form>
+                                    </div>
+                                </div>
+                            </div>
+                        {% endfor %}
+                        {% endif %}
+                        {% if page_obj %}
+                            <nav aria-label="Phân trang" class="d-flex justify-content-center mt-3">
+                                <ul class="pagination">
+                                    {% if page_obj.has_previous %}
+                                        <li class="page-item">
+                                            <a class="page-link" href="?page={{ page_obj.previous_page_number }}">«</a>
+                                        </li>
+                                    {% else %}
+                                        <li class="page-item disabled"><span class="page-link">«</span></li>
+                                    {% endif %}
+                                    {% for num in page_obj.paginator.page_range %}
+                                        {% if num == page_obj.number %}
+                                            <li class="page-item active"><span class="page-link">{{ num }}</span></li>
+                                        {% elif num >= page_obj.number|add:'-2' and num <= page_obj.number|add:'2' %}
+                                            <li class="page-item"><a class="page-link" href="?page={{ num }}">{{ num }}</a></li>
+                                        {% endif %}
+                                    {% endfor %}
+                                    {% if page_obj.has_next %}
+                                        <li class="page-item">
+                                            <a class="page-link" href="?page={{ page_obj.next_page_number }}">»</a>
+                                        </li>
+                                    {% else %}
+                                        <li class="page-item disabled"><span class="page-link">»</span></li>
+                                    {% endif %}
+                                </ul>
+                            </nav>
+                        {% endif %}
+                    </form>
                 {% else %}
-                    <p class="text-muted">Chưa có license nào. Vui lòng tạo mới.</p>
+                    <p class="text-muted mb-0">Chưa có license nào. Tạo mới ở khung bên trái.</p>
                 {% endif %}
             </div>
         </div>
     </div>
+    </div>
 </div>
+<!-- end container -->
+<!-- Modal tạo license -->
+{% if is_superuser %}
+<div class="modal fade" id="createLicenseModal" tabindex="-1" aria-labelledby="createLicenseModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="createLicenseModalLabel">Thêm license</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form method="post">
+                <div class="modal-body">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="create">
+                    {% if is_superuser and users %}
+                        <div class="mb-3">
+                            <label class="form-label">Người dùng</label>
+                            <select name="owner_id" class="form-select">
+                                <option value="">-- Chọn người dùng (để trống = chính bạn) --</option>
+                                {% for u in users %}
+                                    <option value="{{ u.id }}">{{ u.username }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    {% endif %}
+                    {% for field in form %}
+                        {% if not is_superuser or field.name != 'owner_id' %}
+                            <div class="mb-3">
+                                <label for="{{ field.id_for_label }}" class="form-label">{{ field.label }}</label>
+                                {{ field }}
+                                {% if field.help_text %}
+                                    <small class="text-muted d-block mt-1">{{ field.help_text }}</small>
+                                {% endif %}
+                                {% for error in field.errors %}
+                                    <div class="text-danger small mt-1">{{ error }}</div>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                    {% endfor %}
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
+                    <button type="submit" class="btn btn-primary">Tạo</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endif %}
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const selectAll = document.getElementById('select-all');
+        const deleteBtn = document.getElementById('delete-selected-btn');
+        const form = document.querySelector('form[method="post"]');
+
+        if (!deleteBtn || !form) {
+            return;
+        }
+
+        // Function to get all checkboxes (including those not visible due to pagination)
+        const getAllCheckboxes = () => {
+            return document.querySelectorAll('.license-checkbox');
+        };
+
+        const updateButtonState = () => {
+            const checkboxes = getAllCheckboxes();
+            const anyChecked = Array.from(checkboxes).some(cb => cb.checked);
+            deleteBtn.disabled = !anyChecked;
+            
+            // Also update button appearance
+            if (anyChecked) {
+                deleteBtn.classList.remove('disabled');
+            } else {
+                deleteBtn.classList.add('disabled');
+            }
+        };
+
+        if (selectAll) {
+            selectAll.addEventListener('change', function () {
+                const checkboxes = getAllCheckboxes();
+                checkboxes.forEach(cb => {
+                    cb.checked = selectAll.checked;
+                });
+                updateButtonState();
+            });
+        }
+
+        // Use event delegation for checkboxes (handles dynamically loaded content)
+        if (form) {
+            form.addEventListener('change', function(e) {
+                if (e.target.classList.contains('license-checkbox')) {
+                    const checkboxes = getAllCheckboxes();
+                    const cb = e.target;
+                    
+                    if (!cb.checked && selectAll) {
+                        selectAll.checked = false;
+                    } else if (selectAll && Array.from(checkboxes).every(box => box.checked)) {
+                        selectAll.checked = true;
+                    }
+                    updateButtonState();
+                }
+            });
+        }
+
+        // Handle form submission
+        if (form) {
+            form.addEventListener('submit', function(e) {
+                const checkboxes = getAllCheckboxes();
+                const checkedBoxes = Array.from(checkboxes).filter(cb => cb.checked);
+                
+                if (checkedBoxes.length === 0) {
+                    e.preventDefault();
+                    alert('Vui lòng chọn ít nhất một license để xóa.');
+                    return false;
+                }
+                
+                // Ensure action is set
+                const actionInput = form.querySelector('input[name="action"]');
+                if (!actionInput || actionInput.value !== 'delete_selected') {
+                    const hiddenInput = document.createElement('input');
+                    hiddenInput.type = 'hidden';
+                    hiddenInput.name = 'action';
+                    hiddenInput.value = 'delete_selected';
+                    form.appendChild(hiddenInput);
+                }
+            });
+        }
+
+        updateButtonState();
+    });
+</script>
 {% endblock %}
 

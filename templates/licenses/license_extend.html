@@ -4,25 +4,33 @@
 
 {% block content %}
 <div class="row justify-content-center">
-    <div class="col-md-6">
-        <div class="card">
-            <div class="card-header">
-                Gia hạn license cho {{ license.phone_number }}
+    <div class="col-lg-6 col-xl-5">
+        <div class="md-card">
+            <div class="md-card-header">
+                <h5 class="mb-1 fw-semibold">Gia hạn license</h5>
+                <p class="card-subtitle mb-0">Số điện thoại: <strong>{{ license.phone_number }}</strong></p>
             </div>
-            <div class="card-body">
-                <p><strong>Mã:</strong> <code>{{ license.code }}</code></p>
-                <p><strong>Hết hạn hiện tại:</strong> {{ license.expired_at|date:"Y-m-d H:i" }}</p>
-                <form method="post">
+            <div class="md-card-body d-grid gap-3">
+                <div class="p-3 rounded-3 bg-light">
+                    <p class="mb-2 text-muted small">Mã license</p>
+                    <code class="d-block fs-6">{{ license.code }}</code>
+                    <div class="divider"></div>
+                    <p class="mb-0 text-muted small">Hết hạn hiện tại</p>
+                    <h6 class="fw-semibold mb-0">{{ license.expired_at|date:"d/m/Y H:i" }}</h6>
+                </div>
+                <form method="post" class="d-grid gap-3">
                     {% csrf_token %}
-                    <div class="mb-3">
+                    <div>
                         <label for="{{ form.expires_in.id_for_label }}" class="form-label">{{ form.expires_in.label }}</label>
                         {{ form.expires_in }}
                         {% for error in form.expires_in.errors %}
-                            <div class="text-danger">{{ error }}</div>
+                            <div class="text-danger small mt-1">{{ error }}</div>
                         {% endfor %}
                     </div>
-                    <button type="submit" class="btn btn-warning">Cập nhật</button>
-                    <a href="{% url 'licenses:dashboard' %}" class="btn btn-secondary">Hủy</a>
+                    <div class="d-flex flex-wrap gap-2">
+                        <button type="submit" class="btn btn-warning">Cập nhật</button>
+                        <a href="{% url 'licenses:dashboard' %}" class="btn btn-secondary">Hủy</a>
+                    </div>
                 </form>
             </div>
         </div>

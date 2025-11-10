@@ -5,6 +5,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{% block title %}License Manager{% endblock %}</title>
+    <link rel="icon" type="image/png" href="{% static 'images/logo.png' %}">
     <link rel="stylesheet" href="{% static 'vendor/bootstrap/css/bootstrap.min.css' %}">
     <link rel="stylesheet" href="{% static 'css/style.css' %}">
 </head>
@@ -13,7 +14,7 @@
         <nav class="navbar navbar-expand-lg navbar-light bg-white border-bottom">
             <div class="container-fluid">
                 <a class="navbar-brand d-flex align-items-center" href="{% url 'licenses:dashboard' %}">
-                    <img src="{% static 'img/logo.png' %}" alt="Logo" width="28" height="28" class="me-2">
+                    <img src="{% static 'images/logo.png' %}" alt="Logo" width="28" height="28" class="me-2">
                     <span class="fw-semibold">Quản lý License</span>
                 </a>
                 <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#topnav" aria-controls="topnav" aria-expanded="false" aria-label="Toggle navigation">
@@ -32,7 +33,10 @@
                             </a>
                             <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userDropdown">
                                 <li><h6 class="dropdown-header">{{ user.username }}</h6></li>
+                                <li><a class="dropdown-item" href="{% url 'licenses:profile' %}">Hồ sơ</a></li>
+                                {% if user.is_superuser %}
                                 <li><a class="dropdown-item" href="/admin/" target="_blank">Trang quản trị</a></li>
+                                {% endif %}
                                 <li><hr class="dropdown-divider"></li>
                                 <li><a class="dropdown-item text-danger" href="{% url 'logout' %}">Đăng xuất</a></li>
                             </ul>
@@ -42,7 +46,7 @@
             </div>
         </nav>
     {% endif %}
-    <main class="container-fluid py-4">
+    <main class="{% if user.is_authenticated %}container-fluid{% else %}container{% endif %} py-4">
         {% if messages %}
             <div class="mb-3">
                 {% for message in messages %}
@@ -54,7 +58,46 @@
         {% endif %}
         {% block content %}{% endblock %}
     </main>
+    <div id="loadingOverlay" class="loading-overlay">
+        <div class="loading-spinner"></div>
+    </div>
     <script src="{% static 'vendor/bootstrap/js/bootstrap.bundle.min.js' %}"></script>
+    <script>
+        (function() {
+            const overlay = document.getElementById('loadingOverlay');
+            function show() { overlay && overlay.classList.add('active'); }
+            function hide() { overlay && overlay.classList.remove('active'); }
+            
+            // Show loading on form submit, but exclude modal forms
+            document.addEventListener('submit', function(e) {
+                const form = e.target;
+                if (form && form.tagName === 'FORM') {
+                    // Don't show loading for forms inside modals
+                    const isModalForm = form.closest('.modal');
+                    if (!isModalForm) {
+                        show();
+                    }
+                }
+            }, true);
+            
+            // Show loading for elements with .js-loading class (exclude modal triggers)
+            document.addEventListener('click', function(e) {
+                const el = e.target.closest('.js-loading');
+                // Don't trigger loading for buttons that open modals
+                if (el && !el.hasAttribute('data-bs-toggle') && !el.hasAttribute('data-bs-target')) {
+                    show();
+                }
+            }, true);
+            
+            // Hide loading when page loads
+            window.addEventListener('pageshow', hide);
+            
+            // Hide loading when modal is shown (in case it was stuck)
+            document.addEventListener('show.bs.modal', function() {
+                hide();
+            });
+        })();
+    </script>
 </body>
 </html>
 

@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+
+{% block title %}Xóa License{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-6">
+        <div class="card border-danger">
+            <div class="card-header bg-danger text-white">
+                Xóa license
+            </div>
+            <div class="card-body">
+                <p>Bạn có chắc chắn muốn xóa license của <strong>{{ license.phone_number }}</strong>?</p>
+                <p><strong>Mã:</strong> <code>{{ license.code }}</code></p>
+                <form method="post">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-danger">Xóa</button>
+                    <a href="{% url 'licenses:dashboard' %}" class="btn btn-secondary">Hủy</a>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+

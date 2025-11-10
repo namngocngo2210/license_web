@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+
+{% block title %}Gia hạn License{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                Gia hạn license cho {{ license.phone_number }}
+            </div>
+            <div class="card-body">
+                <p><strong>Mã:</strong> <code>{{ license.code }}</code></p>
+                <p><strong>Hết hạn hiện tại:</strong> {{ license.expired_at|date:"Y-m-d H:i" }}</p>
+                <form method="post">
+                    {% csrf_token %}
+                    <div class="mb-3">
+                        <label for="{{ form.expires_in.id_for_label }}" class="form-label">{{ form.expires_in.label }}</label>
+                        {{ form.expires_in }}
+                        {% for error in form.expires_in.errors %}
+                            <div class="text-danger">{{ error }}</div>
+                        {% endfor %}
+                    </div>
+                    <button type="submit" class="btn btn-warning">Cập nhật</button>
+                    <a href="{% url 'licenses:dashboard' %}" class="btn btn-secondary">Hủy</a>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+

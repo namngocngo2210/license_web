@@ -281,6 +281,7 @@ def _license_to_dict(license_obj):
         'code': str(license_obj.code),
         'phone_number': license_obj.phone_number,
         'expired_at': int(license_obj.expired_at.timestamp()),
+        'owner_username': getattr(license_obj.owner, 'username', None),
     }
 
 
@@ -341,7 +342,10 @@ def create_license_api(request):
 @authentication_classes([APIKeyAuthentication])
 @permission_classes([AllowAny])
 def list_license_api(request):
-    licenses = License.objects.filter(owner=request.user)
+    if request.user.is_superuser:
+        licenses = License.objects.all()
+    else:
+        licenses = License.objects.filter(owner=request.user)
     data = [_license_to_dict(license_obj) for license_obj in licenses]
     return Response({'status': True, 'data': data}, status=status.HTTP_200_OK)
 

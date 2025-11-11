@@ -1,5 +1,8 @@
 import uuid
+import json
 from datetime import timedelta
+from pathlib import Path
+from urllib.parse import quote
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
@@ -9,7 +12,8 @@ from django.contrib.auth.views import LoginView
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.urls import reverse
-from django.http import QueryDict
+from django.http import QueryDict, JsonResponse, HttpResponse
+from django.conf import settings
 from urllib.parse import urlencode
 
 from rest_framework import status
@@ -18,7 +22,7 @@ from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 
 from .forms import LicenseCreateForm, LicenseExtendForm, ProfileForm
-from .models import License
+from .models import License, ExtensionPackage, PaymentInfo
 from .auth import APIKeyAuthentication
 
 
@@ -152,6 +156,16 @@ def dashboard(request):
     if request.user.is_superuser:
         User = get_user_model()
         users = User.objects.order_by('username').values('id', 'username')
+    
+    # Load banks data for payment info
+    banks_data = []
+    try:
+        banks_file = Path(settings.BASE_DIR) / 'banks.json'
+        with open(banks_file, 'r', encoding='utf-8') as f:
+            banks_data = json.load(f)
+    except FileNotFoundError:
+        pass
+    
     return render(
         request,
         'licenses/dashboard.html',
@@ -163,6 +177,7 @@ def dashboard(request):
             'users': users,
             'filters': {'q': q, 'status': status_filter, 'days_min': days_min, 'days_max': days_max, 'user_id': user_id},
             'base_querystring': base_querystring,
+            'banks_data': json.dumps(banks_data),
         },
     )
 
@@ -389,13 +404,21 @@ def update_license_api(request):
 
     updated = 0
     not_found = []
-    expired_at = timezone.now() + timedelta(days=expires_in)
+    now = timezone.now()
+    expired_at_list = []
 
     for code in codes:
         try:
             license_obj = License.objects.get(code=code, owner=request.user)
-            license_obj.expired_at = expired_at
+            # Gia hạn thêm số ngày: nếu chưa hết hạn thì cộng vào ngày hết hạn hiện tại, nếu đã hết hạn thì từ bây giờ
+            if license_obj.expired_at > now:
+                # Chưa hết hạn: cộng thêm vào ngày hết hạn hiện tại
+                license_obj.expired_at = license_obj.expired_at + timedelta(days=expires_in)
+            else:
+                # Đã hết hạn: tính từ bây giờ
+                license_obj.expired_at = now + timedelta(days=expires_in)
             license_obj.save(update_fields=['expired_at', 'updated_at'])
+            expired_at_list.append(int(license_obj.expired_at.timestamp()))
             updated += 1
         except License.DoesNotExist:
             not_found.append(code)
@@ -406,11 +429,14 @@ def update_license_api(request):
             status=status.HTTP_404_NOT_FOUND,
         )
 
+    # Lấy expired_at của license đầu tiên được cập nhật (hoặc có thể lấy max/min tùy logic)
+    expired_at = expired_at_list[0] if expired_at_list else int((now + timedelta(days=expires_in)).timestamp())
+
     response_data = {
         'status': True,
         'message': 'updated',
         'updated_count': updated,
-        'expired_at': int(expired_at.timestamp()),
+        'expired_at': expired_at,
     }
 
     if not_found:
@@ -553,3 +579,106 @@ def profile(request):
             'api_key': api_key,
         },
     )
+
+
+@login_required
+def get_extension_packages(request):
+    """API endpoint để lấy danh sách gói gia hạn"""
+    packages = ExtensionPackage.objects.filter(is_active=True).order_by('days')
+    data = [{'id': p.id, 'name': p.name, 'days': p.days, 'amount': float(p.amount)} for p in packages]
+    return JsonResponse({'packages': data})
+
+
+@login_required
+def get_payment_info(request):
+    """API endpoint để lấy thông tin chuyển khoản"""
+    payment = PaymentInfo.objects.filter(is_active=True).first()
+    if not payment:
+        return JsonResponse({'error': 'Không có thông tin chuyển khoản'}, status=404)
+    
+    data = {
+        'id': payment.id,
+        'account_name': payment.account_name,
+        'account_number': payment.account_number,
+        'bank_code': payment.bank_code,
+        'bank_name': payment.bank_name,
+        'note': payment.note or '',
+    }
+    return JsonResponse(data)
+
+
+@login_required
+def generate_qr_code(request):
+    """Tạo URL QR code từ thông tin chuyển khoản sử dụng VietQR"""
+    payment_id = request.GET.get('payment_id')
+    package_id = request.GET.get('package_id')
+    license_id = request.GET.get('license_id')
+    
+    if not payment_id or not package_id or not license_id:
+        return JsonResponse({'error': 'Thiếu thông tin'}, status=400)
+    
+    try:
+        payment = PaymentInfo.objects.get(id=payment_id, is_active=True)
+        package = ExtensionPackage.objects.get(id=package_id, is_active=True)
+        license_obj = License.objects.get(id=license_id)
+        
+        if not request.user.is_superuser and license_obj.owner != request.user:
+            return JsonResponse({'error': 'Không có quyền'}, status=403)
+    except (PaymentInfo.DoesNotExist, ExtensionPackage.DoesNotExist, License.DoesNotExist):
+        return JsonResponse({'error': 'Không tìm thấy thông tin'}, status=404)
+    
+    # Lấy số tiền từ package
+    amount = int(package.amount) if package.amount else 0
+    
+    # Tạo nội dung ghi chú (nếu có) với thông tin license
+    note = payment.note or ''
+    if note and '{' in note:
+        # Format note với thông tin license nếu có placeholder
+        try:
+            note = note.format(
+                license_code=str(license_obj.code),
+                phone_number=license_obj.phone_number,
+                package_name=package.name,
+                days=package.days
+            )
+        except (KeyError, ValueError):
+            # Nếu format lỗi, giữ nguyên note gốc
+            pass
+    
+    # Tạo nội dung chuyển khoản: ghi chú + cách + số ngày (theo gói) + cách + số điện thoại
+    transfer_content_parts = []
+    if note:
+        transfer_content_parts.append(note)
+    transfer_content_parts.append(str(package.days))  # Số ngày theo gói
+    transfer_content_parts.append(license_obj.phone_number)
+    transfer_content = ' '.join(transfer_content_parts)  # Nối bằng khoảng trắng
+    
+    # Tạo URL QR code theo định dạng VietQR
+    # Format: https://img.vietqr.io/image/${bankcode}-${accountno}-compact.jpg?amount=${money}&addInfo=${memo}&accountName=${accountname}
+    qr_url = (
+        f"https://img.vietqr.io/image/{payment.bank_code}-{payment.account_number}-compact.jpg"
+        f"?amount={quote(str(amount))}"
+        f"&addInfo={quote(transfer_content)}"
+        f"&accountName={quote(payment.account_name)}"
+    )
+    
+    return JsonResponse({
+        'qr_code': qr_url,
+        'payment_info': {
+            'account_name': payment.account_name,
+            'account_number': payment.account_number,
+            'bank_name': payment.bank_name,
+            'bank_code': payment.bank_code,
+            'note': note,
+            'transfer_content': transfer_content,
+        },
+        'package': {
+            'name': package.name,
+            'days': package.days,
+            'amount': float(package.amount),
+        },
+        'license': {
+            'code': str(license_obj.code),
+            'phone_number': license_obj.phone_number,
+        }
+    })

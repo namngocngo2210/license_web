@@ -41,3 +41,39 @@ class UserApiKey(models.Model):
     @staticmethod
     def generate_key() -> str:
         return get_random_string(48)
+
+
+class ExtensionPackage(models.Model):
+    name = models.CharField(max_length=200, verbose_name='Tên gói')
+    days = models.PositiveIntegerField(verbose_name='Số ngày')
+    amount = models.DecimalField(max_digits=15, decimal_places=0, default=0, verbose_name='Số tiền (VNĐ)')
+    is_active = models.BooleanField(default=True, verbose_name='Kích hoạt')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['days']
+        verbose_name = 'Gói gia hạn'
+        verbose_name_plural = 'Gói gia hạn'
+
+    def __str__(self):
+        return f'{self.name} ({self.days} ngày) - {self.amount:,.0f} VNĐ'
+
+
+class PaymentInfo(models.Model):
+    account_name = models.CharField(max_length=200, verbose_name='Tên tài khoản')
+    account_number = models.CharField(max_length=50, verbose_name='Số tài khoản')
+    bank_code = models.CharField(max_length=20, verbose_name='Mã ngân hàng')
+    bank_name = models.CharField(max_length=200, verbose_name='Tên ngân hàng', blank=True)
+    note = models.CharField(max_length=500, verbose_name='Ghi chú', blank=True, null=True, help_text='Ghi chú không bắt buộc, có thể để trống')
+    is_active = models.BooleanField(default=True, verbose_name='Kích hoạt')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-created_at']
+        verbose_name = 'Thông tin chuyển khoản'
+        verbose_name_plural = 'Thông tin chuyển khoản'
+
+    def __str__(self):
+        return f'{self.account_name} - {self.account_number} ({self.bank_name})'

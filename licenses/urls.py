@@ -16,5 +16,8 @@ urlpatterns = [
     path('delete', views.delete_license_api, name='delete_api'),
     path('delete-all', views.delete_all_license_api, name='delete_all_api'),
     path('users/create', views.api_create_user, name='api_create_user'),
+    path('api/packages/', views.get_extension_packages, name='get_packages'),
+    path('api/payment-info/', views.get_payment_info, name='get_payment_info'),
+    path('api/qr-code/', views.generate_qr_code, name='generate_qr'),
 ]
 

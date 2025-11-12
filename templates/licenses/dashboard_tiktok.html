@@ -24,7 +24,7 @@
                 <form method="get" class="row g-2 align-items-end">
                     <div class="col-12 col-md">
                         <label class="form-label">Tìm kiếm</label>
-                        <input type="text" name="q" value="{{ filters.q }}" class="form-control" placeholder="Tên license, mã license hoặc người dùng">
+                        <input type="text" name="q" value="{{ filters.q }}" class="form-control" placeholder="Mã cửa hàng, mã license hoặc người dùng">
                     </div>
                     <div class="col-6 col-md-2">
                         <label class="form-label">Trạng thái</label>
@@ -60,7 +60,7 @@
             </div>
             <div class="md-card-body">
                 {% if licenses %}
-                    <form method="post" class="d-grid gap-3">
+                    <form method="post" class="d-grid gap-3" id="bulk-delete-form">
                         {% csrf_token %}
                         {% if is_superuser %}
                             <input type="hidden" name="action" value="delete_selected">
@@ -90,7 +90,7 @@
                                 <thead>
                                     <tr>
                                         {% if is_superuser %}<th class="text-center" style="width:56px;"></th>{% endif %}
-                                        <th class="text-center" style="width:25%;">Tên license</th>
+                                        <th class="text-center" style="width:25%;">Mã cửa hàng</th>
                                         <th class="text-center" style="width:25%;">Mã license</th>
                                         <th class="text-center" style="width:15%;">Hết hạn</th>
                                         <th class="text-center" style="width:10%;">Trạng thái</th>
@@ -106,7 +106,7 @@
                                                     <input class="form-check-input license-checkbox" type="checkbox" name="selected_ids" value="{{ license.id }}">
                                                 </td>
                                             {% endif %}
-                                            <td class="text-center"><span class="chip">{{ license.name }}</span></td>
+                                            <td class="text-center"><span class="chip">{{ license.shop_id }}</span></td>
                                             <td class="text-center text-break"><code style="word-break: break-all;">{{ license.code }}</code></td>
                                             <td class="text-center text-nowrap">{{ license.expired_at|date:"d/m/Y H:i" }}</td>
                                             <td class="text-center">
@@ -122,8 +122,7 @@
                                                     <button type="button" class="btn btn-warning btn-sm" data-bs-toggle="modal" data-bs-target="#extendModal-{{ license.pk }}">Gia hạn</button>
                                                     <button type="button" class="btn btn-danger btn-sm" data-bs-toggle="modal" data-bs-target="#deleteModal-{{ license.pk }}">Xóa</button>
                                                 {% else %}
-                                                    <button type="button" class="btn btn-warning btn-sm extend-btn" data-license-id="{{ license.id }}" data-license-code="{{ license.code }}" data-license-name="{{ license.name }}">Gia hạn</button>
-                                                    <button type="button" class="btn btn-danger btn-sm" data-bs-toggle="modal" data-bs-target="#deleteModal-{{ license.pk }}">Xóa</button>
+                                                    <button type="button" class="btn btn-warning btn-sm extend-btn" data-license-id="{{ license.id }}" data-license-code="{{ license.code }}" data-license-shop-id="{{ license.shop_id }}">Gia hạn</button>
                                                 {% endif %}
                                             </td>
                                         </tr>
@@ -145,8 +144,8 @@
                                                         <div class="divider"></div>
                                                     {% endif %}
                                                     <div class="mb-1">
-                                                        <span class="text-muted small d-block">Tên license</span>
-                                                        <span class="chip">{{ license.name }}</span>
+                                                        <span class="text-muted small d-block">Mã cửa hàng</span>
+                                                        <span class="chip">{{ license.shop_id }}</span>
                                                     </div>
                                                     <div class="mb-1">
                                                         <span class="text-muted small d-block">Mã license</span>
@@ -177,8 +176,7 @@
                                                         <button type="button" class="btn btn-warning flex-fill" data-bs-toggle="modal" data-bs-target="#extendModal-{{ license.pk }}">Gia hạn</button>
                                                         <button type="button" class="btn btn-danger flex-fill" data-bs-toggle="modal" data-bs-target="#deleteModal-{{ license.pk }}">Xóa</button>
                                                     {% else %}
-                                                        <button type="button" class="btn btn-warning flex-fill extend-btn" data-license-id="{{ license.id }}" data-license-code="{{ license.code }}" data-license-name="{{ license.name }}">Gia hạn</button>
-                                                        <button type="button" class="btn btn-danger flex-fill" data-bs-toggle="modal" data-bs-target="#deleteModal-{{ license.pk }}">Xóa</button>
+                                                        <button type="button" class="btn btn-warning flex-fill extend-btn" data-license-id="{{ license.id }}" data-license-code="{{ license.code }}" data-license-shop-id="{{ license.shop_id }}">Gia hạn</button>
                                                     {% endif %}
                                                 </div>
                                             </div>
@@ -201,8 +199,8 @@
                                             <div class="modal-body">
                                                 {% csrf_token %}
                                                 <div class="mb-3">
-                                                    <label class="form-label">Tên license</label>
-                                                    <input type="text" class="form-control" value="{{ license.name }}" disabled>
+                                                    <label class="form-label">Mã cửa hàng</label>
+                                                    <input type="text" class="form-control" value="{{ license.shop_id }}" disabled>
                                                 </div>
                                                 <div class="mb-3">
                                                     <label class="form-label">Mã license</label>
@@ -223,7 +221,8 @@
                             </div>
                         {% endfor %}
                         {% endif %}
-                        <!-- Modals xóa cho từng license -->
+                        <!-- Modals xóa cho từng license (chỉ hiển thị cho superuser) -->
+                        {% if is_superuser %}
                         {% for license in licenses %}
                             <div class="modal fade" id="deleteModal-{{ license.pk }}" tabindex="-1" aria-labelledby="deleteModalLabel-{{ license.pk }}" aria-hidden="true">
                                 <div class="modal-dialog modal-dialog-centered">
@@ -232,10 +231,10 @@
                                             <h5 class="modal-title" id="deleteModalLabel-{{ license.pk }}">Xác nhận xóa</h5>
                                             <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                                         </div>
-                                        <form method="post" action="{% url 'licenses:delete_tiktok' license.pk %}">
+                                        <form method="post" action="{% url 'licenses:delete_tiktok' license.pk %}" id="delete-form-{{ license.pk }}" class="delete-modal-form">
                                             <div class="modal-body">
                                                 {% csrf_token %}
-                                                <p class="mb-0">Bạn có chắc chắn muốn xóa license <strong>{{ license.name }}</strong>?</p>
+                                                <p class="mb-0">Bạn có chắc chắn muốn xóa license <strong>{{ license.shop_id }}</strong>?</p>
                                                 <small class="text-muted">Mã: <code style="word-break: break-all;">{{ license.code }}</code></small>
                                             </div>
                                             <div class="modal-footer">
@@ -247,6 +246,7 @@
                                 </div>
                             </div>
                         {% endfor %}
+                        {% endif %}
                         {% if page_obj %}
                             <nav aria-label="Phân trang" class="d-flex justify-content-center mt-3">
                                 <ul class="pagination">
@@ -348,8 +348,8 @@
                         <div class="card bg-light p-3">
                             <div class="row">
                                 <div class="col-6">
-                                    <small class="text-muted">Tên license:</small>
-                                    <div id="modal-license-name" class="fw-bold"></div>
+                                    <small class="text-muted">Mã cửa hàng:</small>
+                                    <div id="modal-license-shop-id" class="fw-bold"></div>
                                 </div>
                                 <div class="col-6">
                                     <small class="text-muted">Mã license:</small>
@@ -429,7 +429,8 @@
     document.addEventListener('DOMContentLoaded', function () {
         const selectAll = document.getElementById('select-all');
         const deleteBtn = document.getElementById('delete-selected-btn');
-        const form = document.querySelector('form[method="post"]');
+        // Only select the main form for bulk delete, not modal forms
+        const form = document.getElementById('bulk-delete-form');
 
         if (!deleteBtn || !form) {
             return;
@@ -480,48 +481,74 @@
             });
         }
 
-        // Handle form submission
+        // Handle form submission for bulk delete only
         if (form) {
             form.addEventListener('submit', function(e) {
-                const checkboxes = getAllCheckboxes();
-                const checkedBoxes = Array.from(checkboxes).filter(cb => cb.checked);
-                
-                if (checkedBoxes.length === 0) {
-                    e.preventDefault();
-                    alert('Vui lòng chọn ít nhất một license để xóa.');
-                    return false;
+                // Only handle if this is the bulk delete form (check by id)
+                if (this.id === 'bulk-delete-form') {
+                    const actionInput = this.querySelector('input[name="action"]');
+                    if (actionInput && actionInput.value === 'delete_selected') {
+                        const checkboxes = getAllCheckboxes();
+                        const checkedBoxes = Array.from(checkboxes).filter(cb => cb.checked);
+                        
+                        if (checkedBoxes.length === 0) {
+                            e.preventDefault();
+                            alert('Vui lòng chọn ít nhất một license để xóa.');
+                            return false;
+                        }
+                    }
                 }
-                
-                // Ensure action is set
-                const actionInput = form.querySelector('input[name="action"]');
-                if (!actionInput || actionInput.value !== 'delete_selected') {
-                    const hiddenInput = document.createElement('input');
-                    hiddenInput.type = 'hidden';
-                    hiddenInput.name = 'action';
-                    hiddenInput.value = 'delete_selected';
-                    form.appendChild(hiddenInput);
-                }
+                // Allow other forms (like modal delete forms) to submit normally
             });
         }
 
         updateButtonState();
     });
+    
+    // Ensure all delete forms in modals can submit correctly
+    // This listener ensures delete forms are not blocked
+    (function() {
+        // Set up listeners for all delete forms when page loads
+        document.querySelectorAll('.delete-modal-form').forEach(function(form) {
+            form.addEventListener('submit', function(e) {
+                console.log('Delete form submitting:', this.action);
+                // Don't prevent default - allow form to submit
+            }, false);
+        });
+        
+        // Also handle dynamically added forms (if any)
+        const observer = new MutationObserver(function(mutations) {
+            mutations.forEach(function(mutation) {
+                mutation.addedNodes.forEach(function(node) {
+                    if (node.nodeType === 1) { // Element node
+                        const forms = node.querySelectorAll ? node.querySelectorAll('.delete-modal-form') : [];
+                        forms.forEach(function(form) {
+                            form.addEventListener('submit', function(e) {
+                                console.log('Delete form submitting:', this.action);
+                            }, false);
+                        });
+                    }
+                });
+            });
+        });
+        observer.observe(document.body, { childList: true, subtree: true });
+    })();
 
     {% if not is_superuser %}
     // Handle extend button clicks for non-superuser
     let currentLicenseId = null;
     let currentLicenseCode = null;
-    let currentLicenseName = null;
+    let currentLicenseShopId = null;
     const banksData = {{ banks_data|safe }};
 
     document.querySelectorAll('.extend-btn').forEach(btn => {
         btn.addEventListener('click', function() {
             currentLicenseId = this.dataset.licenseId;
             currentLicenseCode = this.dataset.licenseCode;
-            currentLicenseName = this.dataset.licenseName;
+            currentLicenseShopId = this.dataset.licenseShopId;
             
             // Set license info in modal
-            document.getElementById('modal-license-name').textContent = currentLicenseName;
+            document.getElementById('modal-license-shop-id').textContent = currentLicenseShopId;
             document.getElementById('modal-license-code').textContent = currentLicenseCode;
             
             // Load packages
@@ -641,7 +668,7 @@
         showPackageSelection();
         currentLicenseId = null;
         currentLicenseCode = null;
-        currentLicenseName = null;
+        currentLicenseShopId = null;
     });
     {% endif %}
 </script>

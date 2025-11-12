@@ -10,8 +10,8 @@
                 <h5 class="mb-1 fw-semibold">Gia hạn license</h5>
                 {% if license.phone_number %}
                     <p class="card-subtitle mb-0">Số điện thoại: <strong>{{ license.phone_number }}</strong></p>
-                {% elif license.name %}
-                    <p class="card-subtitle mb-0">Tên license: <strong>{{ license.name }}</strong></p>
+                {% elif license.shop_id %}
+                    <p class="card-subtitle mb-0">Mã cửa hàng: <strong>{{ license.shop_id }}</strong></p>
                 {% endif %}
             </div>
             <div class="md-card-body d-grid gap-3">

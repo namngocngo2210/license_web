@@ -37,7 +37,7 @@ class LicenseTikTok(models.Model):
         related_name='tiktok_licenses',
     )
     code = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
-    name = models.CharField(max_length=200, verbose_name='Tên license')
+    shop_id = models.CharField(max_length=200, verbose_name='Mã cửa hàng')
     expired_at = models.DateTimeField(verbose_name='Hết hạn')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -49,7 +49,7 @@ class LicenseTikTok(models.Model):
         verbose_name_plural = 'Licenses TikTok'
 
     def __str__(self):
-        return f'{self.name} ({self.code})'
+        return f'{self.shop_id} ({self.code})'
 
     @property
     def is_expired(self) -> bool:

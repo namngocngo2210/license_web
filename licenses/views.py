@@ -546,10 +546,17 @@ def api_create_user(request):
 @permission_classes([AllowAny])
 def verify_tiktok_license(request):
     code = request.data.get('code')
+    shop_id = request.data.get('shop_id')
 
     if not code:
         return Response(
             {'status': False, 'error': 'code là bắt buộc'},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    if not shop_id:
+        return Response(
+            {'status': False, 'error': 'shop_id là bắt buộc'},
             status=status.HTTP_400_BAD_REQUEST,
         )
 
@@ -562,7 +569,7 @@ def verify_tiktok_license(request):
         )
 
     try:
-        license_obj = LicenseTikTok.objects.get(code=normalized_code)
+        license_obj = LicenseTikTok.objects.get(code=normalized_code, shop_id=shop_id)
     except LicenseTikTok.DoesNotExist:
         return Response(
             {'status': False, 'valid': False, 'reason': 'not_found'},
@@ -601,7 +608,7 @@ def _tiktok_license_to_dict(license_obj):
     return {
         'id': license_obj.id,
         'code': str(license_obj.code),
-        'name': license_obj.name,
+        'shop_id': license_obj.shop_id,
         'expired_at': int(license_obj.expired_at.timestamp()),
         'created_at': int(license_obj.created_at.timestamp()),
         'updated_at': int(license_obj.updated_at.timestamp()),
@@ -613,12 +620,12 @@ def _tiktok_license_to_dict(license_obj):
 @authentication_classes([APIKeyAuthentication])
 @permission_classes([AllowAny])
 def create_tiktok_license_api(request):
-    names = request.data.get('names')
+    shop_ids = request.data.get('shop_ids')
     expires_in = request.data.get('expires_in')
 
-    if not isinstance(names, list) or not names:
+    if not isinstance(shop_ids, list) or not shop_ids:
         return Response(
-            {'status': False, 'error': 'names phải là mảng không rỗng'},
+            {'status': False, 'error': 'shop_ids phải là mảng không rỗng'},
             status=status.HTTP_400_BAD_REQUEST,
         )
 
@@ -632,28 +639,28 @@ def create_tiktok_license_api(request):
             status=status.HTTP_400_BAD_REQUEST,
         )
 
-    if len(names) > 1000:
+    if len(shop_ids) > 1000:
         return Response(
-            {'status': False, 'error': 'names vượt quá 1000 license'},
+            {'status': False, 'error': 'shop_ids vượt quá 1000 license'},
             status=status.HTTP_400_BAD_REQUEST,
         )
 
     expired_at = timezone.now() + timedelta(days=expires_in)
     created = []
 
-    for name in names:
-        if not isinstance(name, str) or not name.strip():
+    for shop_id in shop_ids:
+        if not isinstance(shop_id, str) or not shop_id.strip():
             return Response(
-                {'status': False, 'error': 'Có tên license không hợp lệ'},
+                {'status': False, 'error': 'Có mã cửa hàng không hợp lệ'},
                 status=status.HTTP_400_BAD_REQUEST,
             )
-        name = name.strip()
-        if LicenseTikTok.objects.filter(name=name, owner=request.user).exists():
+        shop_id = shop_id.strip()
+        if LicenseTikTok.objects.filter(shop_id=shop_id, owner=request.user).exists():
             continue
         created.append(
             LicenseTikTok.objects.create(
                 owner=request.user,
-                name=name,
+                shop_id=shop_id,
                 expired_at=expired_at,
             )
         )
@@ -679,7 +686,7 @@ def list_tiktok_license_api(request):
 @permission_classes([AllowAny])
 def update_tiktok_license_api(request):
     id = request.data.get('id')
-    name = request.data.get('name')
+    shop_id = request.data.get('shop_id')
 
     if not id:
         return Response(
@@ -687,13 +694,13 @@ def update_tiktok_license_api(request):
             status=status.HTTP_400_BAD_REQUEST,
         )
 
-    if not name or not isinstance(name, str) or not name.strip():
+    if not shop_id or not isinstance(shop_id, str) or not shop_id.strip():
         return Response(
-            {'status': False, 'error': 'name là bắt buộc và phải là chuỗi không rỗng'},
+            {'status': False, 'error': 'shop_id là bắt buộc và phải là chuỗi không rỗng'},
             status=status.HTTP_400_BAD_REQUEST,
         )
 
-    name = name.strip()
+    shop_id = shop_id.strip()
 
     try:
         license_obj = LicenseTikTok.objects.get(id=id, owner=request.user)
@@ -703,15 +710,15 @@ def update_tiktok_license_api(request):
             status=status.HTTP_404_NOT_FOUND,
         )
 
-    # Kiểm tra tên trùng (trừ chính nó)
-    if LicenseTikTok.objects.filter(name=name, owner=request.user).exclude(id=id).exists():
+    # Kiểm tra mã cửa hàng trùng (trừ chính nó)
+    if LicenseTikTok.objects.filter(shop_id=shop_id, owner=request.user).exclude(id=id).exists():
         return Response(
-            {'status': False, 'error': 'Tên license đã tồn tại'},
+            {'status': False, 'error': 'Mã cửa hàng đã tồn tại'},
             status=status.HTTP_400_BAD_REQUEST,
         )
 
-    license_obj.name = name
-    license_obj.save(update_fields=['name', 'updated_at'])
+    license_obj.shop_id = shop_id
+    license_obj.save(update_fields=['shop_id', 'updated_at'])
 
     return Response(
         {
@@ -823,7 +830,7 @@ def dashboard_tiktok(request):
 
     if q:
         from django.db.models import Q
-        licenses_qs = licenses_qs.filter(Q(name__icontains=q) | Q(code__icontains=q) | Q(owner__username__icontains=q))
+        licenses_qs = licenses_qs.filter(Q(shop_id__icontains=q) | Q(code__icontains=q) | Q(owner__username__icontains=q))
 
     now = timezone.now()
     if status_filter == 'active':
@@ -928,14 +935,20 @@ def delete_tiktok_license(request, pk):
         license_obj = get_object_or_404(LicenseTikTok, pk=pk, owner=request.user)
     
     if request.method == 'POST':
-        name = license_obj.name
+        shop_id = license_obj.shop_id
         license_obj.delete()
-        messages.success(request, f'Đã xóa license TikTok "{name}".')
-        return redirect('licenses:dashboard_tiktok')
+        messages.success(request, f'Đã xóa license TikTok "{shop_id}".')
+        
+        # Preserve query parameters when redirecting
+        qs = QueryDict(request.GET.urlencode(), mutable=True)
+        redirect_url = f"{reverse('licenses:dashboard_tiktok')}?{qs.urlencode()}" if qs else reverse('licenses:dashboard_tiktok')
+        return redirect(redirect_url)
     
     # Redirect back to dashboard with query params if GET request
     # The modal in dashboard will handle the confirmation
-    return redirect('licenses:dashboard_tiktok')
+    qs = QueryDict(request.GET.urlencode(), mutable=True)
+    redirect_url = f"{reverse('licenses:dashboard_tiktok')}?{qs.urlencode()}" if qs else reverse('licenses:dashboard_tiktok')
+    return redirect(redirect_url)
 
 
 @login_required
@@ -1041,7 +1054,7 @@ def generate_qr_code(request):
             if license_type == 'tiktok':
                 note = note.format(
                     license_code=str(license_obj.code),
-                    license_name=license_obj.name,
+                    shop_id=license_obj.shop_id,
                     package_name=package.name,
                     days=package.days
                 )
@@ -1080,7 +1093,7 @@ def generate_qr_code(request):
         'code': str(license_obj.code),
     }
     if license_type == 'tiktok':
-        license_data['name'] = license_obj.name
+        license_data['shop_id'] = license_obj.shop_id
     else:
         license_data['phone_number'] = license_obj.phone_number
     

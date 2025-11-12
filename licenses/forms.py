@@ -103,10 +103,10 @@ class ProfileForm(forms.ModelForm):
 
 
 class LicenseTikTokCreateForm(forms.Form):
-    names = forms.CharField(
-        label='Danh sách tên license (mỗi dòng 1 tên)',
-        widget=forms.Textarea(attrs={'class': 'form-control', 'placeholder': 'Ví dụ:\nLicense 1\nLicense 2', 'rows': 6}),
-        help_text='Tối đa 1000 license. Các license trùng tên sẽ được bỏ qua.',
+    shop_ids = forms.CharField(
+        label='Danh sách mã cửa hàng (mỗi dòng 1 mã)',
+        widget=forms.Textarea(attrs={'class': 'form-control', 'placeholder': 'Ví dụ:\n123456789\n987654321', 'rows': 6}),
+        help_text='Tối đa 1000 license. Các license trùng mã cửa hàng sẽ được bỏ qua.',
     )
     expires_in = forms.IntegerField(
         min_value=1,
@@ -129,14 +129,14 @@ class LicenseTikTokCreateForm(forms.Form):
                 help_text='Để trống để tạo cho chính bạn.',
             )
 
-    def _parse_names(self):
-        raw = self.cleaned_data['names']
-        names = [line.strip() for line in raw.splitlines() if line.strip()]
-        if not names:
-            raise forms.ValidationError('Vui lòng nhập ít nhất 1 tên license.')
-        if len(names) > 1000:
+    def _parse_shop_ids(self):
+        raw = self.cleaned_data['shop_ids']
+        shop_ids = [line.strip() for line in raw.splitlines() if line.strip()]
+        if not shop_ids:
+            raise forms.ValidationError('Vui lòng nhập ít nhất 1 mã cửa hàng.')
+        if len(shop_ids) > 1000:
             raise forms.ValidationError('Tối đa 1000 license mỗi lần.')
-        return names
+        return shop_ids
 
     def save(self):
         if self.owner is None:
@@ -152,14 +152,14 @@ class LicenseTikTokCreateForm(forms.Form):
                 target_owner = User.objects.get(id=int(self.cleaned_data['owner_id']))
             except (User.DoesNotExist, ValueError, TypeError):
                 target_owner = self.owner
-        for name in self._parse_names():
-            if LicenseTikTok.objects.filter(name=name, owner=target_owner).exists():
-                skipped.append(name)
+        for shop_id in self._parse_shop_ids():
+            if LicenseTikTok.objects.filter(shop_id=shop_id, owner=target_owner).exists():
+                skipped.append(shop_id)
                 continue
             created.append(
                 LicenseTikTok.objects.create(
                     owner=target_owner,
-                    name=name,
+                    shop_id=shop_id,
                     expired_at=expired_at,
                 )
             )

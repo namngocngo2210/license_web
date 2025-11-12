@@ -544,6 +544,7 @@ def api_create_user(request):
 def _tiktok_license_to_dict(license_obj):
     return {
         'id': license_obj.id,
+        'code': str(license_obj.code),
         'name': license_obj.name,
         'expired_at': int(license_obj.expired_at.timestamp()),
         'created_at': int(license_obj.created_at.timestamp()),
@@ -766,7 +767,7 @@ def dashboard_tiktok(request):
 
     if q:
         from django.db.models import Q
-        licenses_qs = licenses_qs.filter(Q(name__icontains=q) | Q(owner__username__icontains=q))
+        licenses_qs = licenses_qs.filter(Q(name__icontains=q) | Q(code__icontains=q) | Q(owner__username__icontains=q))
 
     now = timezone.now()
     if status_filter == 'active':
@@ -840,11 +841,9 @@ def delete_tiktok_license(request, pk):
         messages.success(request, f'Đã xóa license TikTok "{name}".')
         return redirect('licenses:dashboard_tiktok')
     
-    return render(
-        request,
-        'licenses/license_confirm_delete.html',
-        {'license': license_obj},
-    )
+    # Redirect back to dashboard with query params if GET request
+    # The modal in dashboard will handle the confirmation
+    return redirect('licenses:dashboard_tiktok')
 
 
 @login_required

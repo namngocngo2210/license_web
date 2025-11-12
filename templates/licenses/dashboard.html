@@ -46,9 +46,9 @@
                         <div class="col-6 col-md-2">
                             <label class="form-label">Người dùng</label>
                             <select name="user_id" class="form-select">
-                                <option value="">Tất cả</option>
+                                <option value="" {% if not filters.user_id %}selected{% endif %}>Tất cả</option>
                                 {% for u in users %}
-                                    <option value="{{ u.id }}" {% if filters.user_id|add:'' == u.id|add:'' %}selected{% endif %}>{{ u.username }}</option>
+                                    <option value="{{ u.id }}" {% if filters.user_id and filters.user_id|stringformat:"s" == u.id|stringformat:"s" %}selected{% endif %}>{{ u.username }}</option>
                                 {% endfor %}
                             </select>
                         </div>

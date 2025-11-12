@@ -24,7 +24,7 @@
                 <form method="get" class="row g-2 align-items-end">
                     <div class="col-12 col-md">
                         <label class="form-label">Tìm kiếm</label>
-                        <input type="text" name="q" value="{{ filters.q }}" class="form-control" placeholder="Tên license hoặc người dùng">
+                        <input type="text" name="q" value="{{ filters.q }}" class="form-control" placeholder="Tên license, mã license hoặc người dùng">
                     </div>
                     <div class="col-6 col-md-2">
                         <label class="form-label">Trạng thái</label>
@@ -46,9 +46,9 @@
                         <div class="col-6 col-md-2">
                             <label class="form-label">Người dùng</label>
                             <select name="user_id" class="form-select">
-                                <option value="">Tất cả</option>
+                                <option value="" {% if not filters.user_id %}selected{% endif %}>Tất cả</option>
                                 {% for u in users %}
-                                    <option value="{{ u.id }}" {% if filters.user_id|add:'' == u.id|add:'' %}selected{% endif %}>{{ u.username }}</option>
+                                    <option value="{{ u.id }}" {% if filters.user_id and filters.user_id|stringformat:"s" == u.id|stringformat:"s" %}selected{% endif %}>{{ u.username }}</option>
                                 {% endfor %}
                             </select>
                         </div>
@@ -90,9 +90,10 @@
                                 <thead>
                                     <tr>
                                         {% if is_superuser %}<th class="text-center" style="width:56px;"></th>{% endif %}
-                                        <th class="text-center" style="width:30%;">Tên license</th>
-                                        <th class="text-center" style="width:18%;">Hết hạn</th>
-                                        <th class="text-center" style="width:12%;">Trạng thái</th>
+                                        <th class="text-center" style="width:25%;">Tên license</th>
+                                        <th class="text-center" style="width:25%;">Mã license</th>
+                                        <th class="text-center" style="width:15%;">Hết hạn</th>
+                                        <th class="text-center" style="width:10%;">Trạng thái</th>
                                         {% if is_superuser %}<th class="text-center" style="width:12%;">Chủ sở hữu</th>{% endif %}
                                         <th class="text-center text-nowrap" style="width:14%;">Hành động</th>
                                     </tr>
@@ -106,6 +107,7 @@
                                                 </td>
                                             {% endif %}
                                             <td class="text-center"><span class="chip">{{ license.name }}</span></td>
+                                            <td class="text-center text-break"><code style="word-break: break-all;">{{ license.code }}</code></td>
                                             <td class="text-center text-nowrap">{{ license.expired_at|date:"d/m/Y H:i" }}</td>
                                             <td class="text-center">
                                                 {% if license.is_expired %}
@@ -143,6 +145,10 @@
                                                     <div class="mb-1">
                                                         <span class="text-muted small d-block">Tên license</span>
                                                         <span class="chip">{{ license.name }}</span>
+                                                    </div>
+                                                    <div class="mb-1">
+                                                        <span class="text-muted small d-block">Mã license</span>
+                                                        <code style="word-break: break-all;">{{ license.code }}</code>
                                                     </div>
                                                     <div class="mb-1">
                                                         <span class="text-muted small d-block">Hết hạn</span>
@@ -186,6 +192,7 @@
                                             <div class="modal-body">
                                                 {% csrf_token %}
                                                 <p class="mb-0">Bạn có chắc chắn muốn xóa license <strong>{{ license.name }}</strong>?</p>
+                                                <small class="text-muted">Mã: <code style="word-break: break-all;">{{ license.code }}</code></small>
                                             </div>
                                             <div class="modal-footer">
                                                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>

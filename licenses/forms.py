@@ -165,3 +165,23 @@ class LicenseTikTokCreateForm(forms.Form):
             )
         return created, skipped
 
+
+class LicenseTikTokExtendForm(forms.Form):
+    expires_in = forms.IntegerField(
+        min_value=1,
+        label='Gia hạn thêm (ngày)',
+        widget=forms.NumberInput(attrs={'class': 'form-control', 'placeholder': 'Số ngày'}),
+    )
+
+    def __init__(self, *args, license_obj=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.license_obj = license_obj
+
+    def save(self):
+        if self.license_obj is None:
+            raise ValueError('Cần cung cấp license.')
+        expires_in = self.cleaned_data['expires_in']
+        self.license_obj.expired_at = timezone.now() + timedelta(days=expires_in)
+        self.license_obj.save(update_fields=['expired_at', 'updated_at'])
+        return self.license_obj
+

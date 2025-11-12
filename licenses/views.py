@@ -21,7 +21,7 @@ from rest_framework.decorators import api_view, authentication_classes, permissi
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 
-from .forms import LicenseCreateForm, LicenseExtendForm, ProfileForm, LicenseTikTokCreateForm
+from .forms import LicenseCreateForm, LicenseExtendForm, ProfileForm, LicenseTikTokCreateForm, LicenseTikTokExtendForm
 from .models import License, LicenseTikTok, ExtensionPackage, PaymentInfo
 from .auth import APIKeyAuthentication
 
@@ -541,6 +541,62 @@ def api_create_user(request):
     )
 
 
+@api_view(['POST'])
+@authentication_classes([APIKeyAuthentication])
+@permission_classes([AllowAny])
+def verify_tiktok_license(request):
+    code = request.data.get('code')
+
+    if not code:
+        return Response(
+            {'status': False, 'error': 'code là bắt buộc'},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    try:
+        normalized_code = str(uuid.UUID(str(code)))
+    except (ValueError, AttributeError, TypeError):
+        return Response(
+            {'status': False, 'valid': False, 'reason': 'not_found'},
+            status=status.HTTP_404_NOT_FOUND,
+        )
+
+    try:
+        license_obj = LicenseTikTok.objects.get(code=normalized_code)
+    except LicenseTikTok.DoesNotExist:
+        return Response(
+            {'status': False, 'valid': False, 'reason': 'not_found'},
+            status=status.HTTP_404_NOT_FOUND,
+        )
+
+    try:
+        expired_at_ts = int(license_obj.expired_at.timestamp())
+    except (OverflowError, OSError, ValueError, AttributeError):
+        return Response(
+            {'status': False, 'valid': False, 'reason': 'invalid_expired_at'},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        )
+
+    if license_obj.is_expired:
+        return Response(
+            {
+                'status': True,
+                'valid': False,
+                'expired_at': expired_at_ts,
+            },
+            status=status.HTTP_410_GONE,
+        )
+
+    return Response(
+        {
+            'status': True,
+            'valid': True,
+            'expired_at': expired_at_ts,
+        },
+        status=status.HTTP_200_OK,
+    )
+
+
 def _tiktok_license_to_dict(license_obj):
     return {
         'id': license_obj.id,
@@ -813,6 +869,15 @@ def dashboard_tiktok(request):
         User = get_user_model()
         users = User.objects.order_by('username').values('id', 'username')
     
+    # Load banks data for payment info
+    banks_data = []
+    try:
+        banks_file = Path(settings.BASE_DIR) / 'banks.json'
+        with open(banks_file, 'r', encoding='utf-8') as f:
+            banks_data = json.load(f)
+    except FileNotFoundError:
+        pass
+    
     return render(
         request,
         'licenses/dashboard_tiktok.html',
@@ -824,6 +889,33 @@ def dashboard_tiktok(request):
             'users': users,
             'filters': {'q': q, 'status': status_filter, 'days_min': days_min, 'days_max': days_max, 'user_id': user_id},
             'base_querystring': base_querystring,
+            'banks_data': json.dumps(banks_data),
+        },
+    )
+
+
+@login_required
+def extend_tiktok_license(request, pk):
+    if request.user.is_superuser:
+        license_obj = get_object_or_404(LicenseTikTok, pk=pk)
+    else:
+        license_obj = get_object_or_404(LicenseTikTok, pk=pk, owner=request.user)
+
+    if request.method == 'POST':
+        form = LicenseTikTokExtendForm(request.POST, license_obj=license_obj)
+        if form.is_valid():
+            form.save()
+            messages.success(request, 'Gia hạn license TikTok thành công.')
+            return redirect('licenses:dashboard_tiktok')
+    else:
+        form = LicenseTikTokExtendForm()
+
+    return render(
+        request,
+        'licenses/license_extend.html',
+        {
+            'form': _style_form(form),
+            'license': license_obj,
         },
     )
 
@@ -918,6 +1010,7 @@ def generate_qr_code(request):
     payment_id = request.GET.get('payment_id')
     package_id = request.GET.get('package_id')
     license_id = request.GET.get('license_id')
+    license_type = request.GET.get('license_type', 'zalo')  # Default to 'zalo' for backward compatibility
     
     if not payment_id or not package_id or not license_id:
         return JsonResponse({'error': 'Thiếu thông tin'}, status=400)
@@ -925,11 +1018,16 @@ def generate_qr_code(request):
     try:
         payment = PaymentInfo.objects.get(id=payment_id, is_active=True)
         package = ExtensionPackage.objects.get(id=package_id, is_active=True)
-        license_obj = License.objects.get(id=license_id)
+        
+        # Get license object based on type
+        if license_type == 'tiktok':
+            license_obj = LicenseTikTok.objects.get(id=license_id)
+        else:
+            license_obj = License.objects.get(id=license_id)
         
         if not request.user.is_superuser and license_obj.owner != request.user:
             return JsonResponse({'error': 'Không có quyền'}, status=403)
-    except (PaymentInfo.DoesNotExist, ExtensionPackage.DoesNotExist, License.DoesNotExist):
+    except (PaymentInfo.DoesNotExist, ExtensionPackage.DoesNotExist, License.DoesNotExist, LicenseTikTok.DoesNotExist):
         return JsonResponse({'error': 'Không tìm thấy thông tin'}, status=404)
     
     # Lấy số tiền từ package
@@ -940,22 +1038,33 @@ def generate_qr_code(request):
     if note and '{' in note:
         # Format note với thông tin license nếu có placeholder
         try:
-            note = note.format(
-                license_code=str(license_obj.code),
-                phone_number=license_obj.phone_number,
-                package_name=package.name,
-                days=package.days
-            )
+            if license_type == 'tiktok':
+                note = note.format(
+                    license_code=str(license_obj.code),
+                    license_name=license_obj.name,
+                    package_name=package.name,
+                    days=package.days
+                )
+            else:
+                note = note.format(
+                    license_code=str(license_obj.code),
+                    phone_number=license_obj.phone_number,
+                    package_name=package.name,
+                    days=package.days
+                )
         except (KeyError, ValueError):
             # Nếu format lỗi, giữ nguyên note gốc
             pass
     
-    # Tạo nội dung chuyển khoản: ghi chú + cách + số ngày (theo gói) + cách + số điện thoại
+    # Tạo nội dung chuyển khoản
     transfer_content_parts = []
     if note:
         transfer_content_parts.append(note)
     transfer_content_parts.append(str(package.days))  # Số ngày theo gói
-    transfer_content_parts.append(license_obj.phone_number)
+    if license_type == 'tiktok':
+        transfer_content_parts.append(str(license_obj.code))  # Mã license cho TikTok
+    else:
+        transfer_content_parts.append(license_obj.phone_number)  # Số điện thoại cho Zalo
     transfer_content = ' '.join(transfer_content_parts)  # Nối bằng khoảng trắng
     
     # Tạo URL QR code theo định dạng VietQR
@@ -966,6 +1075,14 @@ def generate_qr_code(request):
         f"&addInfo={quote(transfer_content)}"
         f"&accountName={quote(payment.account_name)}"
     )
+    
+    license_data = {
+        'code': str(license_obj.code),
+    }
+    if license_type == 'tiktok':
+        license_data['name'] = license_obj.name
+    else:
+        license_data['phone_number'] = license_obj.phone_number
     
     return JsonResponse({
         'qr_code': qr_url,
@@ -982,8 +1099,5 @@ def generate_qr_code(request):
             'days': package.days,
             'amount': float(package.amount),
         },
-        'license': {
-            'code': str(license_obj.code),
-            'phone_number': license_obj.phone_number,
-        }
+        'license': license_data,
     })

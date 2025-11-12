@@ -8,7 +8,11 @@
         <div class="md-card">
             <div class="md-card-header">
                 <h5 class="mb-1 fw-semibold">Gia hạn license</h5>
-                <p class="card-subtitle mb-0">Số điện thoại: <strong>{{ license.phone_number }}</strong></p>
+                {% if license.phone_number %}
+                    <p class="card-subtitle mb-0">Số điện thoại: <strong>{{ license.phone_number }}</strong></p>
+                {% elif license.name %}
+                    <p class="card-subtitle mb-0">Tên license: <strong>{{ license.name }}</strong></p>
+                {% endif %}
             </div>
             <div class="md-card-body d-grid gap-3">
                 <div class="p-3 rounded-3 bg-light">
@@ -29,7 +33,11 @@
                     </div>
                     <div class="d-flex flex-wrap gap-2">
                         <button type="submit" class="btn btn-warning">Cập nhật</button>
-                        <a href="{% url 'licenses:dashboard' %}" class="btn btn-secondary">Hủy</a>
+                        {% if license.phone_number %}
+                            <a href="{% url 'licenses:dashboard' %}" class="btn btn-secondary">Hủy</a>
+                        {% else %}
+                            <a href="{% url 'licenses:dashboard_tiktok' %}" class="btn btn-secondary">Hủy</a>
+                        {% endif %}
                     </div>
                 </form>
             </div>

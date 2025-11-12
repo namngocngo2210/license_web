@@ -15,33 +15,36 @@
             <div class="container-fluid">
                 <a class="navbar-brand d-flex align-items-center" href="{% url 'licenses:dashboard' %}">
                     <img src="{% static 'images/logo.png' %}" alt="Logo" width="28" height="28" class="me-2">
-                    <span class="fw-semibold">Quản lý License</span>
+                    <span class="fw-semibold d-none d-md-inline">Quản lý License</span>
                 </a>
-                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#topnav" aria-controls="topnav" aria-expanded="false" aria-label="Toggle navigation">
-                    <span class="navbar-toggler-icon"></span>
-                </button>
-                <div class="collapse navbar-collapse justify-content-end" id="topnav">
-                    <ul class="navbar-nav mb-2 mb-lg-0 align-items-center">
-                        <li class="nav-item me-2 text-muted small d-none d-md-block">
-                            Xin chào, <strong>{{ user.username }}</strong>
-                        </li>
-                        <li class="nav-item dropdown">
-                            <a class="nav-link dropdown-toggle d-flex align-items-center" href="#" id="userDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                                <span class="rounded-circle bg-primary text-white d-inline-flex justify-content-center align-items-center" style="width:32px;height:32px;">
-                                    {{ user.username|first|upper }}
-                                </span>
-                            </a>
-                            <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userDropdown">
-                                <li><h6 class="dropdown-header">{{ user.username }}</h6></li>
-                                <li><a class="dropdown-item" href="{% url 'licenses:profile' %}">Hồ sơ</a></li>
-                                {% if user.is_superuser %}
-                                <li><a class="dropdown-item" href="/admin/" target="_blank">Trang quản trị</a></li>
-                                {% endif %}
-                                <li><hr class="dropdown-divider"></li>
-                                <li><a class="dropdown-item text-danger" href="{% url 'logout' %}">Đăng xuất</a></li>
-                            </ul>
-                        </li>
-                    </ul>
+                <div class="d-flex align-items-center ms-auto">
+                    <a class="nav-link d-flex align-items-center me-3 {% if request.resolver_match.namespace == 'licenses' and request.resolver_match.url_name != 'profile' and request.resolver_match.url_name != 'dashboard_tiktok' and request.resolver_match.url_name != 'delete_tiktok' %}active{% endif %}" href="{% url 'licenses:dashboard' %}">
+                        <img src="{% static 'images/zalo.svg' %}" alt="Zalo" width="24" height="24" class="me-md-2">
+                        <span class="d-none d-md-inline">License Zalo</span>
+                    </a>
+                    <a class="nav-link d-flex align-items-center me-3 {% if request.resolver_match.url_name == 'dashboard_tiktok' or request.resolver_match.url_name == 'delete_tiktok' %}active{% endif %}" href="{% url 'licenses:dashboard_tiktok' %}">
+                        <img src="{% static 'images/tiktok.png' %}" alt="TikTok" width="24" height="24" class="me-md-2">
+                        <span class="d-none d-md-inline">License TikTok</span>
+                    </a>
+                    <span class="text-muted small me-2 d-none d-md-block">
+                        Xin chào, <strong>{{ user.username }}</strong>
+                    </span>
+                    <div class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle d-flex align-items-center p-0" href="#" id="userDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                            <span class="rounded-circle bg-primary text-white d-inline-flex justify-content-center align-items-center" style="width:32px;height:32px;">
+                                {{ user.username|first|upper }}
+                            </span>
+                        </a>
+                        <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userDropdown">
+                            <li><h6 class="dropdown-header">{{ user.username }}</h6></li>
+                            <li><a class="dropdown-item" href="{% url 'licenses:profile' %}">Hồ sơ</a></li>
+                            {% if user.is_superuser %}
+                            <li><a class="dropdown-item" href="/admin/" target="_blank">Trang quản trị</a></li>
+                            {% endif %}
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item text-danger" href="{% url 'logout' %}">Đăng xuất</a></li>
+                        </ul>
+                    </div>
                 </div>
             </div>
         </nav>

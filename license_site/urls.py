@@ -17,12 +17,20 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import include, path
 from django.contrib.auth import views as auth_views
+from django.shortcuts import redirect
 
 from licenses.views import StyledLoginView
+from licenses import urls_api
+
+def redirect_to_license(request):
+    return redirect('licenses:dashboard')
 
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('accounts/login/', StyledLoginView.as_view(), name='login'),
     path('accounts/logout/', auth_views.LogoutView.as_view(), name='logout'),
-    path('', include(('licenses.urls', 'licenses'), namespace='licenses')),
+    path('license/', include(('licenses.urls', 'licenses'), namespace='licenses')),
+    path('', include(('licenses.urls_api', 'licenses'), namespace='licenses')),
+] + [
+    path('', redirect_to_license, name='home'),
 ]

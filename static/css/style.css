@@ -36,6 +36,22 @@ body {
     padding: 0.65rem 1.5rem;
 }
 
+.navbar .nav-link.active {
+    color: var(--md-primary);
+    font-weight: 600;
+    position: relative;
+}
+
+.navbar .nav-link.active::after {
+    content: '';
+    position: absolute;
+    bottom: -1px;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: var(--md-primary);
+}
+
 .md-card,
 .card {
     border: none;
@@ -222,8 +238,8 @@ input[type="checkbox"] {
 }
 
 .login-avatar {
-    width: 48px;
-    height: 48px;
+    width: 32px;
+    height: 32px;
     border-radius: 50%;
     background: rgba(63, 81, 181, 0.08);
     display: inline-flex;
@@ -232,8 +248,9 @@ input[type="checkbox"] {
     overflow: hidden;
 }
 .login-avatar img {
-    width: 70%;
+    width: 50%;
     height: auto;
+    object-fit: contain;
     display: block;
 }
 

@@ -21,8 +21,8 @@ from rest_framework.decorators import api_view, authentication_classes, permissi
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 
-from .forms import LicenseCreateForm, LicenseExtendForm, ProfileForm
-from .models import License, ExtensionPackage, PaymentInfo
+from .forms import LicenseCreateForm, LicenseExtendForm, ProfileForm, LicenseTikTokCreateForm
+from .models import License, LicenseTikTok, ExtensionPackage, PaymentInfo
 from .auth import APIKeyAuthentication
 
 
@@ -538,6 +538,312 @@ def api_create_user(request):
             'api_key': api_key_value,
         },
         status=status.HTTP_201_CREATED,
+    )
+
+
+def _tiktok_license_to_dict(license_obj):
+    return {
+        'id': license_obj.id,
+        'name': license_obj.name,
+        'expired_at': int(license_obj.expired_at.timestamp()),
+        'created_at': int(license_obj.created_at.timestamp()),
+        'updated_at': int(license_obj.updated_at.timestamp()),
+        'owner_username': getattr(license_obj.owner, 'username', None),
+    }
+
+
+@api_view(['POST'])
+@authentication_classes([APIKeyAuthentication])
+@permission_classes([AllowAny])
+def create_tiktok_license_api(request):
+    names = request.data.get('names')
+    expires_in = request.data.get('expires_in')
+
+    if not isinstance(names, list) or not names:
+        return Response(
+            {'status': False, 'error': 'names phải là mảng không rỗng'},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    try:
+        expires_in = int(expires_in)
+        if expires_in <= 0:
+            raise ValueError
+    except (TypeError, ValueError):
+        return Response(
+            {'status': False, 'error': 'expires_in phải là số nguyên dương'},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    if len(names) > 1000:
+        return Response(
+            {'status': False, 'error': 'names vượt quá 1000 license'},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    expired_at = timezone.now() + timedelta(days=expires_in)
+    created = []
+
+    for name in names:
+        if not isinstance(name, str) or not name.strip():
+            return Response(
+                {'status': False, 'error': 'Có tên license không hợp lệ'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        name = name.strip()
+        if LicenseTikTok.objects.filter(name=name, owner=request.user).exists():
+            continue
+        created.append(
+            LicenseTikTok.objects.create(
+                owner=request.user,
+                name=name,
+                expired_at=expired_at,
+            )
+        )
+
+    data = [_tiktok_license_to_dict(item) for item in created]
+    return Response({'status': True, 'data': data}, status=status.HTTP_201_CREATED)
+
+
+@api_view(['GET'])
+@authentication_classes([APIKeyAuthentication])
+@permission_classes([AllowAny])
+def list_tiktok_license_api(request):
+    if request.user.is_superuser:
+        licenses = LicenseTikTok.objects.all()
+    else:
+        licenses = LicenseTikTok.objects.filter(owner=request.user)
+    data = [_tiktok_license_to_dict(license_obj) for license_obj in licenses]
+    return Response({'status': True, 'data': data}, status=status.HTTP_200_OK)
+
+
+@api_view(['PUT'])
+@authentication_classes([APIKeyAuthentication])
+@permission_classes([AllowAny])
+def update_tiktok_license_api(request):
+    id = request.data.get('id')
+    name = request.data.get('name')
+
+    if not id:
+        return Response(
+            {'status': False, 'error': 'id là bắt buộc'},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    if not name or not isinstance(name, str) or not name.strip():
+        return Response(
+            {'status': False, 'error': 'name là bắt buộc và phải là chuỗi không rỗng'},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    name = name.strip()
+
+    try:
+        license_obj = LicenseTikTok.objects.get(id=id, owner=request.user)
+    except LicenseTikTok.DoesNotExist:
+        return Response(
+            {'status': False, 'error': 'license không tồn tại'},
+            status=status.HTTP_404_NOT_FOUND,
+        )
+
+    # Kiểm tra tên trùng (trừ chính nó)
+    if LicenseTikTok.objects.filter(name=name, owner=request.user).exclude(id=id).exists():
+        return Response(
+            {'status': False, 'error': 'Tên license đã tồn tại'},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    license_obj.name = name
+    license_obj.save(update_fields=['name', 'updated_at'])
+
+    return Response(
+        {
+            'status': True,
+            'message': 'updated',
+            'data': _tiktok_license_to_dict(license_obj),
+        },
+        status=status.HTTP_200_OK,
+    )
+
+
+@api_view(['DELETE'])
+@authentication_classes([APIKeyAuthentication])
+@permission_classes([AllowAny])
+def delete_tiktok_license_api(request):
+    id = request.data.get('id')
+    if not id:
+        return Response(
+            {'status': False, 'error': 'id là bắt buộc'},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    try:
+        license_obj = LicenseTikTok.objects.get(id=id, owner=request.user)
+    except LicenseTikTok.DoesNotExist:
+        return Response(
+            {'status': False, 'error': 'license không tồn tại'},
+            status=status.HTTP_404_NOT_FOUND,
+        )
+
+    license_obj.delete()
+    return Response({'status': True, 'message': 'deleted'}, status=status.HTTP_200_OK)
+
+
+@api_view(['DELETE'])
+@authentication_classes([APIKeyAuthentication])
+@permission_classes([AllowAny])
+def delete_all_tiktok_license_api(request):
+    deleted_count, _ = LicenseTikTok.objects.filter(owner=request.user).delete()
+    return Response(
+        {'status': True, 'message': 'deleted_all', 'deleted_count': deleted_count},
+        status=status.HTTP_200_OK,
+    )
+
+
+@login_required
+def dashboard_tiktok(request):
+    form = LicenseTikTokCreateForm(owner=request.user)
+
+    if request.method == 'POST':
+        action = request.POST.get('action')
+
+        if action == 'create':
+            form = LicenseTikTokCreateForm(request.POST, owner=request.user)
+            if form.is_valid():
+                created, skipped = form.save()
+                if created:
+                    messages.success(request, f'Đã tạo {len(created)} license TikTok.')
+                if skipped:
+                    messages.warning(request, f'Bỏ qua {len(skipped)} license đã tồn tại.')
+                return redirect('licenses:dashboard_tiktok')
+        elif action == 'delete_selected':
+            selected_ids = request.POST.getlist('selected_ids')
+            
+            # Build redirect URL with query parameters preserved
+            qs = QueryDict(request.GET.urlencode(), mutable=True)
+            redirect_url = f"{reverse('licenses:dashboard_tiktok')}?{qs.urlencode()}" if qs else reverse('licenses:dashboard_tiktok')
+            
+            if not selected_ids:
+                messages.warning(request, 'Vui lòng chọn ít nhất một license để xóa.')
+                return redirect(redirect_url)
+
+            try:
+                selected_ids = [int(pk) for pk in selected_ids]
+            except (TypeError, ValueError):
+                messages.warning(request, 'Danh sách license không hợp lệ.')
+                return redirect(redirect_url)
+
+            # Superuser can delete any license, regular users can only delete their own
+            if request.user.is_superuser:
+                licenses_qs = LicenseTikTok.objects.filter(id__in=selected_ids)
+            else:
+                licenses_qs = LicenseTikTok.objects.filter(owner=request.user, id__in=selected_ids)
+            
+            deleted_count = licenses_qs.count()
+            if deleted_count == 0:
+                messages.warning(request, 'Không tìm thấy license tương ứng để xóa.')
+            else:
+                licenses_qs.delete()
+                messages.success(request, f'Đã xóa {deleted_count} license đã chọn.')
+            
+            return redirect(redirect_url)
+
+    from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
+
+    # Base queryset: superuser sees all, others see own licenses only
+    if request.user.is_superuser:
+        licenses_qs = LicenseTikTok.objects.all()
+    else:
+        licenses_qs = LicenseTikTok.objects.filter(owner=request.user)
+    licenses_qs = licenses_qs.order_by('-created_at')
+
+    # Filters
+    q = request.GET.get('q', '').strip()
+    status_filter = request.GET.get('status', '').strip()  # 'active' | 'expired' | ''
+    days_min = request.GET.get('days_min', '').strip()
+    days_max = request.GET.get('days_max', '').strip()
+    user_id = request.GET.get('user_id', '').strip() if request.user.is_superuser else ''
+
+    if q:
+        from django.db.models import Q
+        licenses_qs = licenses_qs.filter(Q(name__icontains=q) | Q(owner__username__icontains=q))
+
+    now = timezone.now()
+    if status_filter == 'active':
+        licenses_qs = licenses_qs.filter(expired_at__gt=now)
+    elif status_filter == 'expired':
+        licenses_qs = licenses_qs.filter(expired_at__lte=now)
+
+    def parse_int(val):
+        try:
+            return int(val)
+        except (TypeError, ValueError):
+            return None
+
+    dmin = parse_int(days_min)
+    dmax = parse_int(days_max)
+    if dmin is not None:
+        licenses_qs = licenses_qs.filter(expired_at__gte=now + timedelta(days=dmin))
+    if dmax is not None:
+        licenses_qs = licenses_qs.filter(expired_at__lte=now + timedelta(days=dmax))
+
+    if user_id and request.user.is_superuser:
+        try:
+            user_id_int = int(user_id)
+            licenses_qs = licenses_qs.filter(owner_id=user_id_int)
+        except (TypeError, ValueError):
+            pass
+    page = request.GET.get('page', 1)
+    per_page = 10
+    paginator = Paginator(licenses_qs, per_page)
+    try:
+        page_obj = paginator.page(page)
+    except PageNotAnInteger:
+        page_obj = paginator.page(1)
+    except EmptyPage:
+        page_obj = paginator.page(paginator.num_pages)
+
+    # Preserve filters in pagination links
+    qs_params = {k: v for k, v in request.GET.items() if k != 'page' and v}
+    base_querystring = urlencode(qs_params)
+
+    users = []
+    if request.user.is_superuser:
+        User = get_user_model()
+        users = User.objects.order_by('username').values('id', 'username')
+    
+    return render(
+        request,
+        'licenses/dashboard_tiktok.html',
+        {
+            'form': _style_form(form),
+            'licenses': page_obj.object_list,
+            'page_obj': page_obj,
+            'is_superuser': request.user.is_superuser,
+            'users': users,
+            'filters': {'q': q, 'status': status_filter, 'days_min': days_min, 'days_max': days_max, 'user_id': user_id},
+            'base_querystring': base_querystring,
+        },
+    )
+
+
+@login_required
+def delete_tiktok_license(request, pk):
+    if request.user.is_superuser:
+        license_obj = get_object_or_404(LicenseTikTok, pk=pk)
+    else:
+        license_obj = get_object_or_404(LicenseTikTok, pk=pk, owner=request.user)
+    
+    if request.method == 'POST':
+        name = license_obj.name
+        license_obj.delete()
+        messages.success(request, f'Đã xóa license TikTok "{name}".')
+        return redirect('licenses:dashboard_tiktok')
+    
+    return render(
+        request,
+        'licenses/license_confirm_delete.html',
+        {'license': license_obj},
     )
 
 

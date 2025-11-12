@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+
+{% block title %}Tạo License TikTok{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row g-4">
+        <div class="col-12 col-lg-6">
+            <div class="md-card">
+                <div class="md-card-header">
+                    <h5 class="mb-1 fw-semibold">Tạo License TikTok</h5>
+                    <p class="card-subtitle mb-0">Nhập tên license và chọn người dùng</p>
+                </div>
+                <div class="md-card-body">
+                    <form method="post" class="d-grid gap-3">
+                        {% csrf_token %}
+                        {% for field in form %}
+                            <div>
+                                <label for="{{ field.id_for_label }}" class="form-label">{{ field.label }}</label>
+                                {{ field }}
+                                {% if field.help_text %}
+                                    <small class="text-muted d-block mt-1">{{ field.help_text }}</small>
+                                {% endif %}
+                                {% for error in field.errors %}
+                                    <div class="text-danger small mt-1">{{ error }}</div>
+                                {% endfor %}
+                            </div>
+                        {% endfor %}
+                        <button type="submit" class="btn btn-primary">Tạo License</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+

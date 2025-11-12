@@ -19,10 +19,36 @@ class License(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
+        db_table = 'license_zalo'
         ordering = ['-created_at']
 
     def __str__(self):
         return f'{self.phone_number} ({self.code})'
+
+    @property
+    def is_expired(self) -> bool:
+        return timezone.now() >= self.expired_at
+
+
+class LicenseTikTok(models.Model):
+    owner = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='tiktok_licenses',
+    )
+    name = models.CharField(max_length=200, verbose_name='Tên license')
+    expired_at = models.DateTimeField(verbose_name='Hết hạn')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'license_tiktok'
+        ordering = ['-created_at']
+        verbose_name = 'License TikTok'
+        verbose_name_plural = 'Licenses TikTok'
+
+    def __str__(self):
+        return f'{self.name} ({self.owner.username})'
 
     @property
     def is_expired(self) -> bool:

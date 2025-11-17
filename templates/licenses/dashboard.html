@@ -13,7 +13,7 @@
                         <h5 class="mb-1 fw-semibold">Danh sách license</h5>
                         <p class="card-subtitle mb-0">Quản lý, gia hạn và xóa các license đã tạo</p>
                     </div>
-                    {% if is_superuser %}
+                    {% if can_create_license %}
                         <div>
                             <button class="btn btn-primary btn-sm js-loading" data-bs-toggle="modal" data-bs-target="#createLicenseModal">
                                 Thêm license
@@ -282,7 +282,7 @@
 </div>
 <!-- end container -->
 <!-- Modal tạo license -->
-{% if is_superuser %}
+{% if can_create_license %}
 <div class="modal fade" id="createLicenseModal" tabindex="-1" aria-labelledby="createLicenseModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg modal-dialog-centered">
         <div class="modal-content">
@@ -307,16 +307,21 @@
                     {% endif %}
                     {% for field in form %}
                         {% if not is_superuser or field.name != 'owner_id' %}
-                            <div class="mb-3">
-                                <label for="{{ field.id_for_label }}" class="form-label">{{ field.label }}</label>
+                            {% if is_superuser or field.name != 'expires_in' %}
+                                <div class="mb-3">
+                                    <label for="{{ field.id_for_label }}" class="form-label">{{ field.label }}</label>
+                                    {{ field }}
+                                    {% if field.help_text %}
+                                        <small class="text-muted d-block mt-1">{{ field.help_text }}</small>
+                                    {% endif %}
+                                    {% for error in field.errors %}
+                                        <div class="text-danger small mt-1">{{ error }}</div>
+                                    {% endfor %}
+                                </div>
+                            {% else %}
+                                {# Ẩn trường expires_in cho non-superuser nhưng vẫn render để có giá trị #}
                                 {{ field }}
-                                {% if field.help_text %}
-                                    <small class="text-muted d-block mt-1">{{ field.help_text }}</small>
-                                {% endif %}
-                                {% for error in field.errors %}
-                                    <div class="text-danger small mt-1">{{ error }}</div>
-                                {% endfor %}
-                            </div>
+                            {% endif %}
                         {% endif %}
                     {% endfor %}
                 </div>

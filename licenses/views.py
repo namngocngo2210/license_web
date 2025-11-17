@@ -14,6 +14,7 @@ from django.utils import timezone
 from django.urls import reverse
 from django.http import QueryDict, JsonResponse, HttpResponse
 from django.conf import settings
+from django import forms
 from urllib.parse import urlencode
 
 from rest_framework import status
@@ -53,14 +54,23 @@ def dashboard(request):
         action = request.POST.get('action')
 
         if action == 'create':
+            # Kiểm tra nếu non-superuser đã có license thì không cho tạo
+            if not request.user.is_superuser:
+                if License.objects.filter(owner=request.user).exists():
+                    messages.error(request, 'Bạn chỉ được tạo license 1 lần.')
+                    return redirect('licenses:dashboard')
+            
             form = LicenseCreateForm(request.POST, owner=request.user)
             if form.is_valid():
-                created, skipped = form.save()
-                if created:
-                    messages.success(request, f'Đã tạo {len(created)} license.')
-                if skipped:
-                    messages.warning(request, f'Bỏ qua {len(skipped)} số đã tồn tại.')
-                return redirect('licenses:dashboard')
+                try:
+                    created, skipped = form.save()
+                    if created:
+                        messages.success(request, f'Đã tạo {len(created)} license.')
+                    if skipped:
+                        messages.warning(request, f'Bỏ qua {len(skipped)} số đã tồn tại.')
+                    return redirect('licenses:dashboard')
+                except forms.ValidationError as e:
+                    form.add_error(None, e)
         elif action == 'delete_selected':
             selected_ids = request.POST.getlist('selected_ids')
             
@@ -157,6 +167,9 @@ def dashboard(request):
         User = get_user_model()
         users = User.objects.order_by('username').values('id', 'username')
     
+    # Kiểm tra non-superuser có thể tạo license không (chưa có license nào)
+    can_create_license = request.user.is_superuser or not License.objects.filter(owner=request.user).exists()
+    
     # Load banks data for payment info
     banks_data = []
     try:
@@ -175,6 +188,7 @@ def dashboard(request):
             'page_obj': page_obj,
             'is_superuser': request.user.is_superuser,
             'users': users,
+            'can_create_license': can_create_license,
             'filters': {'q': q, 'status': status_filter, 'days_min': days_min, 'days_max': days_max, 'user_id': user_id},
             'base_querystring': base_querystring,
             'banks_data': json.dumps(banks_data),
@@ -772,14 +786,23 @@ def dashboard_tiktok(request):
         action = request.POST.get('action')
 
         if action == 'create':
+            # Kiểm tra nếu non-superuser đã có license thì không cho tạo
+            if not request.user.is_superuser:
+                if LicenseTikTok.objects.filter(owner=request.user).exists():
+                    messages.error(request, 'Bạn chỉ được tạo license 1 lần.')
+                    return redirect('licenses:dashboard_tiktok')
+            
             form = LicenseTikTokCreateForm(request.POST, owner=request.user)
             if form.is_valid():
-                created, skipped = form.save()
-                if created:
-                    messages.success(request, f'Đã tạo {len(created)} license TikTok.')
-                if skipped:
-                    messages.warning(request, f'Bỏ qua {len(skipped)} license đã tồn tại.')
-                return redirect('licenses:dashboard_tiktok')
+                try:
+                    created, skipped = form.save()
+                    if created:
+                        messages.success(request, f'Đã tạo {len(created)} license TikTok.')
+                    if skipped:
+                        messages.warning(request, f'Bỏ qua {len(skipped)} license đã tồn tại.')
+                    return redirect('licenses:dashboard_tiktok')
+                except forms.ValidationError as e:
+                    form.add_error(None, e)
         elif action == 'delete_selected':
             selected_ids = request.POST.getlist('selected_ids')
             
@@ -876,6 +899,9 @@ def dashboard_tiktok(request):
         User = get_user_model()
         users = User.objects.order_by('username').values('id', 'username')
     
+    # Kiểm tra non-superuser có thể tạo license không (chưa có license nào)
+    can_create_license = request.user.is_superuser or not LicenseTikTok.objects.filter(owner=request.user).exists()
+    
     # Load banks data for payment info
     banks_data = []
     try:
@@ -894,6 +920,7 @@ def dashboard_tiktok(request):
             'page_obj': page_obj,
             'is_superuser': request.user.is_superuser,
             'users': users,
+            'can_create_license': can_create_license,
             'filters': {'q': q, 'status': status_filter, 'days_min': days_min, 'days_max': days_max, 'user_id': user_id},
             'base_querystring': base_querystring,
             'banks_data': json.dumps(banks_data),
@@ -1075,7 +1102,7 @@ def generate_qr_code(request):
         transfer_content_parts.append(note)
     transfer_content_parts.append(str(package.days))  # Số ngày theo gói
     if license_type == 'tiktok':
-        transfer_content_parts.append(str(license_obj.code))  # Mã license cho TikTok
+        transfer_content_parts.append(str(license_obj.shop_id))  # Shop ID cho TikTok
     else:
         transfer_content_parts.append(license_obj.phone_number)  # Số điện thoại cho Zalo
     transfer_content = ' '.join(transfer_content_parts)  # Nối bằng khoảng trắng

@@ -1100,6 +1100,10 @@ def generate_qr_code(request):
     transfer_content_parts = []
     if note:
         transfer_content_parts.append(note)
+    if license_type == 'tiktok':
+        transfer_content_parts.append('ltt')
+    else:
+        transfer_content_parts.append('lzl')
     transfer_content_parts.append(str(package.days))  # Số ngày theo gói
     if license_type == 'tiktok':
         transfer_content_parts.append(str(license_obj.shop_id))  # Shop ID cho TikTok

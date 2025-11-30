@@ -54,11 +54,8 @@ def dashboard(request):
         action = request.POST.get('action')
 
         if action == 'create':
-            # Kiểm tra nếu non-superuser đã có license thì không cho tạo
-            if not request.user.is_superuser:
-                if License.objects.filter(owner=request.user).exists():
-                    messages.error(request, 'Bạn chỉ được tạo license 1 lần.')
-                    return redirect('licenses:dashboard')
+            # Logic kiểm tra giới hạn license đã được gỡ bỏ
+
             
             form = LicenseCreateForm(request.POST, owner=request.user)
             if form.is_valid():
@@ -167,8 +164,8 @@ def dashboard(request):
         User = get_user_model()
         users = User.objects.order_by('username').values('id', 'username')
     
-    # Kiểm tra non-superuser có thể tạo license không (chưa có license nào)
-    can_create_license = request.user.is_superuser or not License.objects.filter(owner=request.user).exists()
+    # Non-superuser bây giờ có thể tạo nhiều license
+    can_create_license = True
     
     # Load banks data for payment info
     banks_data = []

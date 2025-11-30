@@ -28,7 +28,7 @@ class LicenseCreateForm(forms.Form):
         if not is_superuser:
             self.fields['phone_numbers'].label = 'Số điện thoại'
             self.fields['phone_numbers'].widget = forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Nhập số điện thoại'})
-            self.fields['phone_numbers'].help_text = 'Bạn chỉ được tạo 1 license và có hạn trong 1 ngày (dùng demo).'
+            self.fields['phone_numbers'].help_text = 'License có hạn trong 1 ngày (dùng demo).'
             # Ẩn trường expires_in cho non-superuser
             self.fields['expires_in'].widget = forms.HiddenInput()
             self.fields['expires_in'].required = False
@@ -88,10 +88,8 @@ class LicenseCreateForm(forms.Form):
             except (User.DoesNotExist, ValueError, TypeError):
                 target_owner = self.owner
         
-        # Kiểm tra non-superuser đã có license chưa
-        if not is_superuser:
-            if License.objects.filter(owner=target_owner).exists():
-                raise forms.ValidationError('Bạn chỉ được tạo license 1 lần.')
+        # Logic kiểm tra giới hạn license đã được gỡ bỏ
+
         
         for phone_number in self._parse_numbers():
             if License.objects.filter(phone_number=phone_number).exists():

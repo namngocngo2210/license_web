@@ -33,21 +33,6 @@
                             <label class="form-label">Đến (ngày)</label>
                             <input type="number" class="form-control" name="days_max" value="{{ filters.days_max }}"
                                 min="0" placeholder="VD: 30">
-                        </div>
-                        {% if is_superuser %}
-                        <div class="col-6 col-md-2">
-                            <label class="form-label">Người dùng</label>
-                            <select name="user_id" class="form-select">
-                                <option value="" {% if not filters.user_id %}selected{% endif %}>Tất cả</option>
-                                {% for u in users %}
-                                <option value="{{ u.id }}" {% if filters.user_id and
-                                    filters.user_id|stringformat:"s"==u.id|stringformat:"s" %}selected{% endif %}>{{
-                                    u.username }}</option>
-                                {% endfor %}
-                            </select>
-                        </div>
-                        {% endif %}
-                        <div class="col-12 col-md-auto">
                             <button type="submit" class="btn btn-primary">Lọc</button>
                         </div>
                     </form>

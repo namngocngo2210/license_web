@@ -111,14 +111,6 @@ class ExtensionPackage(models.Model):
 
 
 class PaymentInfo(models.Model):
-    group = models.ForeignKey(
-        ExtensionPackageGroup,
-        on_delete=models.CASCADE,
-        related_name='payment_infos',
-        verbose_name='Nhóm gói',
-        null=True,  # Allow null temporarily for migration
-        blank=True
-    )
     account_name = models.CharField(max_length=200, verbose_name='Tên tài khoản')
     account_number = models.CharField(max_length=50, verbose_name='Số tài khoản')
     bank_code = models.CharField(max_length=20, verbose_name='Mã ngân hàng')

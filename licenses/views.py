@@ -1032,13 +1032,7 @@ def get_extension_packages(request):
 @login_required
 def get_payment_info(request):
     """API endpoint để lấy thông tin chuyển khoản"""
-    group_code = request.GET.get('group_code')
-    payment_qs = PaymentInfo.objects.filter(is_active=True)
-    
-    if group_code:
-        payment_qs = payment_qs.filter(group__code=group_code)
-        
-    payment = payment_qs.first()
+    payment = PaymentInfo.objects.filter(is_active=True).first()
     if not payment:
         return JsonResponse({'error': 'Không có thông tin chuyển khoản'}, status=404)
     

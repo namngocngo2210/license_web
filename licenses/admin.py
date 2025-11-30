@@ -34,7 +34,7 @@ class ExtensionPackageAdmin(admin.ModelAdmin):
 
 @admin.register(PaymentInfo)
 class PaymentInfoAdmin(admin.ModelAdmin):
-    list_display = ('account_name', 'account_number', 'bank_name', 'bank_code', 'group', 'is_active', 'created_at')
-    list_filter = ('group', 'is_active', 'bank_code', 'created_at')
+    list_display = ('account_name', 'account_number', 'bank_name', 'bank_code', 'is_active', 'created_at')
+    list_filter = ('is_active', 'bank_code', 'created_at')
     search_fields = ('account_name', 'account_number', 'bank_name', 'bank_code')
     list_editable = ('is_active',)

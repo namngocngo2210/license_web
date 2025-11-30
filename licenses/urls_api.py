@@ -16,5 +16,6 @@ urlpatterns = [
     path('tiktok/update', views.update_tiktok_license_api, name='update_tiktok_api'),
     path('tiktok/delete', views.delete_tiktok_license_api, name='delete_tiktok_api'),
     path('tiktok/delete-all', views.delete_all_tiktok_license_api, name='delete_all_tiktok_api'),
+    path('admin/users/create', views.admin_create_user_api, name='admin_create_user_api'),
 ]
 

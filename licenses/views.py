@@ -1148,3 +1148,63 @@ def generate_qr_code(request):
         },
         'license': license_data,
     })
+
+
+@api_view(['POST'])
+@authentication_classes([APIKeyAuthentication])
+@permission_classes([AllowAny])
+def admin_create_user_api(request):
+    # Allow only superusers via API key
+    user = request.user
+    if not user or not user.is_authenticated or not user.is_superuser:
+        return Response({'status': False, 'error': 'Forbidden'}, status=status.HTTP_403_FORBIDDEN)
+
+    data = request.data or {}
+    username = (data.get('username') or '').strip()
+    password = data.get('password') or ''
+    email = (data.get('email') or '').strip()
+    first_name = (data.get('first_name') or '').strip()
+    last_name = (data.get('last_name') or '').strip()
+
+    if not username or not password:
+        return Response(
+            {'status': False, 'error': 'username và password là bắt buộc'},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    User = get_user_model()
+    if User.objects.filter(username=username).exists():
+        return Response(
+            {'status': False, 'error': 'username đã tồn tại'},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    try:
+        new_user = User.objects.create_user(
+            username=username,
+            password=password,
+            email=email or None,
+            first_name=first_name,
+            last_name=last_name,
+        )
+    except Exception as e:
+        return Response(
+            {'status': False, 'error': f'Lỗi khi tạo user: {str(e)}'},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        )
+
+    return Response(
+        {
+            'status': True,
+            'message': 'user_created',
+            'user': {
+                'id': new_user.id,
+                'username': new_user.username,
+                'email': new_user.email,
+                'first_name': new_user.first_name,
+                'last_name': new_user.last_name,
+                'is_superuser': new_user.is_superuser,
+            },
+        },
+        status=status.HTTP_201_CREATED,
+    )

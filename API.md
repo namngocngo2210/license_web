@@ -242,4 +242,44 @@ curl -X POST https://license.ndk.vn/users/create \
   -d '{"username":"newuser","password":"StrongPass123"}'
 ```
 
+---
+
+### Tạo tài khoản (Admin - API mới)
+- Method: POST
+- Path: `/admin/users/create`
+- Auth: Bắt buộc (API key của superuser)
+
+Request
+```json
+{
+  "username": "newuser",
+  "password": "StrongPass123",
+  "email": "user@example.com",
+  "first_name": "New User Name"
+}
+```
+
+Response 201
+```json
+{
+  "status": true,
+  "message": "user_created",
+  "user": {
+    "id": 13,
+    "username": "newuser",
+    "email": "user@example.com",
+    "first_name": "New User Name",
+    "last_name": "",
+    "is_superuser": false
+  }
+}
+```
+
+Lỗi thường gặp
+```json
+{ "status": false, "error": "Forbidden" }             // không phải superuser
+{ "status": false, "error": "username và password là bắt buộc" }
+{ "status": false, "error": "username đã tồn tại" }
+```
+
 

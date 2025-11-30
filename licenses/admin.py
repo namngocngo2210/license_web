@@ -1,6 +1,12 @@
 from django.contrib import admin
 
-from .models import License, UserApiKey, ExtensionPackage, PaymentInfo
+from .models import License, UserApiKey, ExtensionPackage, PaymentInfo, ExtensionPackageGroup
+
+
+@admin.register(ExtensionPackageGroup)
+class ExtensionPackageGroupAdmin(admin.ModelAdmin):
+    list_display = ('name', 'code', 'created_at')
+    search_fields = ('name', 'code')
 
 
 @admin.register(License)
@@ -20,15 +26,15 @@ class UserApiKeyAdmin(admin.ModelAdmin):
 
 @admin.register(ExtensionPackage)
 class ExtensionPackageAdmin(admin.ModelAdmin):
-    list_display = ('name', 'days', 'amount', 'is_active', 'created_at')
-    list_filter = ('is_active', 'created_at')
+    list_display = ('name', 'group', 'days', 'amount', 'is_active', 'created_at')
+    list_filter = ('group', 'is_active', 'created_at')
     search_fields = ('name',)
     list_editable = ('is_active',)
 
 
 @admin.register(PaymentInfo)
 class PaymentInfoAdmin(admin.ModelAdmin):
-    list_display = ('account_name', 'account_number', 'bank_name', 'bank_code', 'is_active', 'created_at')
-    list_filter = ('is_active', 'bank_code', 'created_at')
+    list_display = ('account_name', 'account_number', 'bank_name', 'bank_code', 'group', 'is_active', 'created_at')
+    list_filter = ('group', 'is_active', 'bank_code', 'created_at')
     search_fields = ('account_name', 'account_number', 'bank_name', 'bank_code')
     list_editable = ('is_active',)

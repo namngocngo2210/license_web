@@ -14,6 +14,63 @@
                             <p class="card-subtitle mb-0">Quản lý và xóa các license TikTok đã tạo</p>
                         </div>
                         {% if can_create_license %}
+                        <div>
+                            <button class="btn btn-primary btn-sm js-loading" data-bs-toggle="modal"
+                                data-bs-target="#createLicenseModal">
+                                Thêm license
+                            </button>
+                        </div>
+                        {% endif %}
+                    </div>
+                    <form method="get" class="row g-2 align-items-end">
+                        <div class="col-12 col-md">
+                            <label class="form-label">Tìm kiếm</label>
+                            <input type="text" name="q" value="{{ filters.q }}" class="form-control"
+                                placeholder="SĐT, mã license hoặc mã cửa hàng">
+                        </div>
+                        <div class="col-6 col-md-2">
+                            <label class="form-label">Trạng thái</label>
+                            <select name="status" class="form-select">
+                                <option value="">Tất cả</option>
+                                <option value="active" {% if filters.status=='active' %}selected{% endif %}>Hoạt động
+                                </option>
+                                <option value="expired" {% if filters.status=='expired' %}selected{% endif %}>Hết hạn
+                                </option>
+                            </select>
+                        </div>
+                        <div class="col-6 col-md-2">
+                            <label class="form-label">Từ (ngày)</label>
+                            <input type="number" class="form-control" name="days_min" value="{{ filters.days_min }}"
+                                min="0" placeholder="VD: 0">
+                        </div>
+                        <div class="col-6 col-md-2">
+                            <label class="form-label">Đến (ngày)</label>
+                            <input type="number" class="form-control" name="days_max" value="{{ filters.days_max }}"
+                                min="0" placeholder="VD: 30">
+                        </div>
+                        {% if is_superuser %}
+                        <div class="col-6 col-md-2">
+                            <label class="form-label">Người dùng</label>
+                            <select name="user_id" class="form-select">
+                                <option value="" {% if not filters.user_id %}selected{% endif %}>Tất cả</option>
+                                {% for u in users %}
+                                <option value="{{ u.id }}" {% if filters.user_id and
+                                    filters.user_id|stringformat:"s"==u.id|stringformat:"s" %}selected{% endif %}>{{
+                                    u.username }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        {% endif %}
+                        <div class="col-12 col-md-auto">
+                            <button type="submit" class="btn btn-primary">Lọc</button>
+                        </div>
+                    </form>
+                </div>
+                <div class="md-card-body">
+                    {% if licenses %}
+                    <form method="post" class="d-grid gap-3" id="bulk-delete-form">
+                        {% csrf_token %}
+                        {% if is_superuser %}
                         <input type="hidden" name="action" value="delete_selected">
                         <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mt-2">
                             <div class="form-check">
@@ -272,398 +329,412 @@
                             </ul>
                         </nav>
                         {% endif %}
-                        </form>
-                        {% else %}
-                        <p class="text-muted mb-0">Chưa có license nào. Tạo mới ở khung bên trái.</p>
-                        {% endif %}
-                    </div>
+                    </form>
+                    {% else %}
+                    <p class="text-muted mb-0">Chưa có license nào. Tạo mới ở khung bên trái.</p>
+                    {% endif %}
                 </div>
             </div>
         </div>
     </div>
-    <!-- end container -->
-    <!-- Modal tạo license -->
-    {% if can_create_license %}
-    <div class="modal fade" id="createLicenseModal" tabindex="-1" aria-labelledby="createLicenseModalLabel"
-        aria-hidden="true">
-        <div class="modal-dialog modal-lg modal-dialog-centered">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="createLicenseModalLabel">Thêm license TikTok</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <form method="post">
-                    <div class="modal-body">
-                        {% csrf_token %}
-                        <input type="hidden" name="action" value="create">
-                        {% if is_superuser and users %}
-                        <div class="mb-3">
-                            <label class="form-label">Người dùng</label>
-                            <select name="owner_id" class="form-select">
-                                <option value="">-- Chọn người dùng (để trống = chính bạn) --</option>
-                                {% for u in users %}
-                                <option value="{{ u.id }}">{{ u.username }}</option>
-                                {% endfor %}
-                            </select>
-                        </div>
-                        {% endif %}
-                        {% for field in form %}
-                        {% if not is_superuser or field.name != 'owner_id' %}
-                        {% if is_superuser or field.name != 'expires_in' %}
-                        <div class="mb-3">
-                            <label for="{{ field.id_for_label }}" class="form-label">{{ field.label }}</label>
-                            {{ field }}
-                            {% if field.help_text %}
-                            <small class="text-muted d-block mt-1">{{ field.help_text }}</small>
-                            {% endif %}
-                            {% for error in field.errors %}
-                            <div class="text-danger small mt-1">{{ error }}</div>
+</div>
+<!-- end container -->
+<!-- Modal tạo license -->
+{% if can_create_license %}
+<div class="modal fade" id="createLicenseModal" tabindex="-1" aria-labelledby="createLicenseModalLabel"
+    aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="createLicenseModalLabel">Thêm license TikTok</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form method="post">
+                <div class="modal-body">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="create">
+                    {% if is_superuser and users %}
+                    <div class="mb-3">
+                        <label class="form-label">Người dùng</label>
+                        <select name="owner_id" class="form-select">
+                            <option value="">-- Chọn người dùng (để trống = chính bạn) --</option>
+                            {% for u in users %}
+                            <option value="{{ u.id }}">{{ u.username }}</option>
                             {% endfor %}
-                        </div>
-                        {% else %}
-                        {# Ẩn trường expires_in cho non-superuser nhưng vẫn render để có giá trị #}
+                        </select>
+                    </div>
+                    {% endif %}
+                    {% for field in form %}
+                    {% if not is_superuser or field.name != 'owner_id' %}
+                    {% if is_superuser or field.name != 'expires_in' %}
+                    <div class="mb-3">
+                        <label for="{{ field.id_for_label }}" class="form-label">{{ field.label }}</label>
                         {{ field }}
+                        {% if field.help_text %}
+                        <small class="text-muted d-block mt-1">{{ field.help_text }}</small>
                         {% endif %}
-                        {% endif %}
+                        {% for error in field.errors %}
+                        <div class="text-danger small mt-1">{{ error }}</div>
                         {% endfor %}
                     </div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
-                        <button type="submit" class="btn btn-primary">Tạo</button>
-                    </div>
-                </form>
-            </div>
-        </div>
-    </div>
-    {% endif %}
-    <!-- Modal gia hạn cho non-superuser -->
-    {% if not is_superuser %}
-    <div class="modal fade" id="extendPackageModal" tabindex="-1" aria-labelledby="extendPackageModalLabel"
-        aria-hidden="true">
-        <div class="modal-dialog modal-lg modal-dialog-centered">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="extendPackageModalLabel">Gia hạn license</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <div class="modal-body">
-                    <div id="package-selection-step">
-                        <div class="mb-3">
-                            <label class="form-label">Thông tin license</label>
-                            <div class="card bg-light p-3">
-                                <div class="row">
-                                    <div class="col-6">
-                                        <small class="text-muted">Mã cửa hàng:</small>
-                                        <div id="modal-license-shop-id" class="fw-bold"></div>
-                                    </div>
-                                    <div class="col-6">
-                                        <small class="text-muted">Mã license:</small>
-                                        <div id="modal-license-code" class="fw-bold text-break"></div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label">Chọn gói gia hạn</label>
-                            <div id="packages-list" class="d-grid gap-2">
-                                <div class="text-center text-muted py-3">
-                                    <div class="spinner-border spinner-border-sm" role="status">
-                                        <span class="visually-hidden">Loading...</span>
-                                    </div>
-                                    <div class="mt-2">Đang tải danh sách gói...</div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <div id="payment-step" style="display: none;">
-                        <div class="text-center mb-3">
-                            <h6>Thông tin thanh toán</h6>
-                        </div>
-                        <div class="row">
-                            <div class="col-12 col-md-6 mb-3">
-                                <div id="qr-code-container" class="text-center">
-                                    <img id="qr-code-image" src="" alt="QR Code" class="img-fluid"
-                                        style="max-width: 300px;">
-                                </div>
-                            </div>
-                            <div class="col-12 col-md-6">
-                                <div class="card">
-                                    <div class="card-body">
-                                        <h6 class="card-title">Thông tin chuyển khoản</h6>
-                                        <div class="mb-2">
-                                            <small class="text-muted">Tên tài khoản:</small>
-                                            <div id="payment-account-name" class="fw-bold"></div>
-                                        </div>
-                                        <div class="mb-2">
-                                            <small class="text-muted">Số tài khoản:</small>
-                                            <div id="payment-account-number" class="fw-bold"></div>
-                                        </div>
-                                        <div class="mb-2">
-                                            <small class="text-muted">Ngân hàng:</small>
-                                            <div id="payment-bank-name" class="fw-bold"></div>
-                                        </div>
-                                        <div class="mb-2">
-                                            <small class="text-muted">Nội dung chuyển khoản:</small>
-                                            <div id="payment-content" class="fw-bold text-break"></div>
-                                        </div>
-                                        <div class="mt-3">
-                                            <small class="text-muted">Gói đã chọn:</small>
-                                            <div id="selected-package-name" class="fw-bold text-primary"></div>
-                                        </div>
-                                        <div class="mt-2">
-                                            <small class="text-muted">Số tiền:</small>
-                                            <div id="selected-package-amount" class="fw-bold text-success fs-5"></div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="alert alert-info mt-3">
-                            <small><i class="bi bi-info-circle"></i> Vui lòng chuyển khoản theo thông tin trên. Sau khi
-                                chuyển khoản thành công, license sẽ được gia hạn tự động.</small>
-                        </div>
-                    </div>
+                    {% else %}
+                    {# Ẩn trường expires_in cho non-superuser nhưng vẫn render để có giá trị #}
+                    {{ field }}
+                    {% endif %}
+                    {% endif %}
+                    {% endfor %}
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" id="back-to-packages-btn" style="display: none;"
-                        onclick="showPackageSelection()">Quay lại</button>
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Đóng</button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
+                    <button type="submit" class="btn btn-primary">Tạo</button>
                 </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endif %}
+<!-- Modal gia hạn cho non-superuser -->
+{% if not is_superuser %}
+<div class="modal fade" id="extendPackageModal" tabindex="-1" aria-labelledby="extendPackageModalLabel"
+    aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="extendPackageModalLabel">Gia hạn license</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div id="package-selection-step">
+                    <div class="mb-3">
+                        <label class="form-label">Thông tin license</label>
+                        <div class="card bg-light p-3">
+                            <div class="row">
+                                <div class="col-6">
+                                    <small class="text-muted">Mã cửa hàng:</small>
+                                    <div id="modal-license-shop-id" class="fw-bold"></div>
+                                </div>
+                                <div class="col-6">
+                                    <small class="text-muted">Mã license:</small>
+                                    <div id="modal-license-code" class="fw-bold text-break"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Chọn gói gia hạn</label>
+                        <div id="packages-list" class="d-grid gap-2">
+                            <div class="text-center text-muted py-3">
+                                <div class="spinner-border spinner-border-sm" role="status">
+                                    <span class="visually-hidden">Loading...</span>
+                                </div>
+                                <div class="mt-2">Đang tải danh sách gói...</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div id="payment-step" style="display: none;">
+                    <div class="text-center mb-3">
+                        <h6>Thông tin thanh toán</h6>
+                    </div>
+                    <div class="row">
+                        <div class="col-12 col-md-6 mb-3">
+                            <div id="qr-code-container" class="text-center">
+                                <img id="qr-code-image" src="" alt="QR Code" class="img-fluid"
+                                    style="max-width: 300px;">
+                            </div>
+                        </div>
+                        <div class="col-12 col-md-6">
+                            <div class="card">
+                                <div class="card-body">
+                                    <h6 class="card-title">Thông tin chuyển khoản</h6>
+                                    <div class="mb-2">
+                                        <small class="text-muted">Tên tài khoản:</small>
+                                        <div id="payment-account-name" class="fw-bold"></div>
+                                    </div>
+                                    <div class="mb-2">
+                                        <small class="text-muted">Số tài khoản:</small>
+                                        <div id="payment-account-number" class="fw-bold"></div>
+                                    </div>
+                                    <div class="mb-2">
+                                        <small class="text-muted">Ngân hàng:</small>
+                                        <div id="payment-bank-name" class="fw-bold"></div>
+                                    </div>
+                                    <div class="mb-2">
+                                        <small class="text-muted">Nội dung chuyển khoản:</small>
+                                        <div id="payment-content" class="fw-bold text-break"></div>
+                                    </div>
+                                    <div class="mt-3">
+                                        <small class="text-muted">Gói đã chọn:</small>
+                                        <div id="selected-package-name" class="fw-bold text-primary"></div>
+                                    </div>
+                                    <div class="mt-2">
+                                        <small class="text-muted">Số tiền:</small>
+                                        <div id="selected-package-amount" class="fw-bold text-success fs-5"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="alert alert-info mt-3">
+                        <small><i class="bi bi-info-circle"></i> Vui lòng chuyển khoản theo thông tin trên. Sau khi
+                            chuyển khoản thành công, license sẽ được gia hạn tự động.</small>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" id="back-to-packages-btn" style="display: none;"
+                    onclick="showPackageSelection()">Quay lại</button>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Đóng</button>
             </div>
         </div>
     </div>
-    {% endif %}
-    <script>
-        document.addEventListener('DOMContentLoaded', function () {
-            const selectAll = document.getElementById('select-all');
-            const deleteBtn = document.getElementById('delete-selected-btn');
-            // Only select the main form for bulk delete, not modal forms
-            const form = document.getElementById('bulk-delete-form');
+</div>
+{% endif %}
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const selectAll = document.getElementById('select-all');
+        const deleteBtn = document.getElementById('delete-selected-btn');
+        // Only select the main form for bulk delete, not modal forms
+        const form = document.getElementById('bulk-delete-form');
 
-            if (!deleteBtn || !form) {
-                return;
+        if (!deleteBtn || !form) {
+            return;
+        }
+
+        // Function to get all checkboxes (including those not visible due to pagination)
+        const getAllCheckboxes = () => {
+            return document.querySelectorAll('.license-checkbox');
+        };
+
+        const updateButtonState = () => {
+            const checkboxes = getAllCheckboxes();
+            const anyChecked = Array.from(checkboxes).some(cb => cb.checked);
+            deleteBtn.disabled = !anyChecked;
+
+            // Also update button appearance
+            if (anyChecked) {
+                deleteBtn.classList.remove('disabled');
+            } else {
+                deleteBtn.classList.add('disabled');
             }
+        };
 
-            // Function to get all checkboxes (including those not visible due to pagination)
-            const getAllCheckboxes = () => {
-                return document.querySelectorAll('.license-checkbox');
-            };
-
-            const updateButtonState = () => {
+        if (selectAll) {
+            selectAll.addEventListener('change', function () {
                 const checkboxes = getAllCheckboxes();
-                const anyChecked = Array.from(checkboxes).some(cb => cb.checked);
-                deleteBtn.disabled = !anyChecked;
+                checkboxes.forEach(cb => {
+                    cb.checked = selectAll.checked;
+                });
+                updateButtonState();
+            });
+        }
 
-                // Also update button appearance
-                if (anyChecked) {
-                    deleteBtn.classList.remove('disabled');
-                } else {
-                    deleteBtn.classList.add('disabled');
-                }
-            };
-
-            if (selectAll) {
-                selectAll.addEventListener('change', function () {
+        // Use event delegation for checkboxes (handles dynamically loaded content)
+        if (form) {
+            form.addEventListener('change', function (e) {
+                if (e.target.classList.contains('license-checkbox')) {
                     const checkboxes = getAllCheckboxes();
-                    checkboxes.forEach(cb => {
-                        cb.checked = selectAll.checked;
-                    });
+                    const cb = e.target;
+
+                    if (!cb.checked && selectAll) {
+                        selectAll.checked = false;
+                    } else if (selectAll && Array.from(checkboxes).every(box => box.checked)) {
+                        selectAll.checked = true;
+                    }
                     updateButtonState();
-                });
-            }
+                }
+            });
+        }
 
-            // Use event delegation for checkboxes (handles dynamically loaded content)
-            if (form) {
-                form.addEventListener('change', function (e) {
-                    if (e.target.classList.contains('license-checkbox')) {
+        // Handle form submission for bulk delete only
+        if (form) {
+            form.addEventListener('submit', function (e) {
+                // Only handle if this is the bulk delete form (check by id)
+                if (this.id === 'bulk-delete-form') {
+                    const actionInput = this.querySelector('input[name="action"]');
+                    if (actionInput && actionInput.value === 'delete_selected') {
                         const checkboxes = getAllCheckboxes();
-                        const cb = e.target;
+                        const checkedBoxes = Array.from(checkboxes).filter(cb => cb.checked);
 
-                        if (!cb.checked && selectAll) {
-                            selectAll.checked = false;
-                        } else if (selectAll && Array.from(checkboxes).every(box => box.checked)) {
-                            selectAll.checked = true;
-                        }
-                        updateButtonState();
-                    }
-                });
-            }
-
-            // Handle form submission for bulk delete only
-            if (form) {
-                form.addEventListener('submit', function (e) {
-                    // Only handle if this is the bulk delete form (check by id)
-                    if (this.id === 'bulk-delete-form') {
-                        const actionInput = this.querySelector('input[name="action"]');
-                        if (actionInput && actionInput.value === 'delete_selected') {
-                            const checkboxes = getAllCheckboxes();
-                            const checkedBoxes = Array.from(checkboxes).filter(cb => cb.checked);
-
-                            if (checkedBoxes.length === 0) {
-                                e.preventDefault();
-                                alert('Vui lòng chọn ít nhất một license để xóa.');
-                                return false;
-                            }
+                        if (checkedBoxes.length === 0) {
+                            e.preventDefault();
+                            alert('Vui lòng chọn ít nhất một license để xóa.');
+                            return false;
                         }
                     }
-                    // Allow other forms (like modal delete forms) to submit normally
-                });
-            }
+                }
+                // Allow other forms (like modal delete forms) to submit normally
+            });
+        }
 
-            updateButtonState();
+        updateButtonState();
+    });
+
+    // Ensure all delete forms in modals can submit correctly
+    // This listener ensures delete forms are not blocked
+    (function () {
+        // Set up listeners for all delete forms when page loads
+        document.querySelectorAll('.delete-modal-form').forEach(function (form) {
+            form.addEventListener('submit', function (e) {
+                console.log('Delete form submitting:', this.action);
+                // Don't prevent default - allow form to submit
+            }, false);
         });
 
-        // Ensure all delete forms in modals can submit correctly
-        // This listener ensures delete forms are not blocked
-        (function () {
-            // Set up listeners for all delete forms when page loads
-            document.querySelectorAll('.delete-modal-form').forEach(function (form) {
-                form.addEventListener('submit', function (e) {
-                    console.log('Delete form submitting:', this.action);
-                    // Don't prevent default - allow form to submit
-                }, false);
-            });
-
-            // Also handle dynamically added forms (if any)
-            const observer = new MutationObserver(function (mutations) {
-                mutations.forEach(function (mutation) {
-                    mutation.addedNodes.forEach(function (node) {
-                        if (node.nodeType === 1) { // Element node
-                            const forms = node.querySelectorAll ? node.querySelectorAll('.delete-modal-form') : [];
-                            forms.forEach(function (form) {
-                                form.addEventListener('submit', function (e) {
-                                    console.log('Delete form submitting:', this.action);
-                                }, false);
-                            });
-                        }
-                    });
+        // Also handle dynamically added forms (if any)
+        const observer = new MutationObserver(function (mutations) {
+            mutations.forEach(function (mutation) {
+                mutation.addedNodes.forEach(function (node) {
+                    if (node.nodeType === 1) { // Element node
+                        const forms = node.querySelectorAll ? node.querySelectorAll('.delete-modal-form') : [];
+                        forms.forEach(function (form) {
+                            form.addEventListener('submit', function (e) {
+                                console.log('Delete form submitting:', this.action);
+                            }, false);
+                        });
+                    }
                 });
             });
-            observer.observe(document.body, { childList: true, subtree: true });
-        })();
-
-        {% if not is_superuser %}
-        // Handle extend button clicks for non-superuser
-        let currentLicenseId = null;
-        let currentLicenseCode = null;
-        let currentLicenseShopId = null;
-        const banksData = {{ banks_data| safe }};
-
-        document.querySelectorAll('.extend-btn').forEach(btn => {
-            btn.addEventListener('click', function () {
-                currentLicenseId = this.dataset.licenseId;
-                currentLicenseCode = this.dataset.licenseCode;
-                currentLicenseShopId = this.dataset.licenseShopId;
-
-                // Set license info in modal
-                document.getElementById('modal-license-shop-id').textContent = currentLicenseShopId;
-                document.getElementById('modal-license-code').textContent = currentLicenseCode;
-
-                // Load packages
-                loadPackages();
-
-                // Show modal
-                const modal = new bootstrap.Modal(document.getElementById('extendPackageModal'));
-                modal.show();
-            });
         });
+        observer.observe(document.body, { childList: true, subtree: true });
+    })();
 
-        function loadPackages() {
-            fetch('{% url "licenses:get_packages" %}?group_code=tiktok')
-                .then(response => response.json())
-                .then(data => {
-                    const packagesList = document.getElementById('packages-list');
-                    if (data.packages && data.packages.length > 0) {
-                        packagesList.innerHTML = '';
-                        data.packages.forEach(pkg => {
-                            const packageCard = document.createElement('div');
-                            packageCard.className = 'card package-card';
-                            packageCard.style.cursor = 'pointer';
-                            packageCard.dataset.packageId = pkg.id;
-                            const amountText = pkg.amount ? new Intl.NumberFormat('vi-VN').format(pkg.amount) + ' VNĐ' : 'Miễn phí';
-                            packageCard.innerHTML = `
-                            <div class="card-body">
-                                <div class="d-flex justify-content-between align-items-center">
-                                    <div>
-                                        <h6 class="mb-1">${pkg.name}</h6>
-                                        <small class="text-muted">Gia hạn thêm ${pkg.days} ngày</small>
-                                        <div class="mt-1">
-                                            <strong class="text-primary">${amountText}</strong>
-                                        </div>
+    {% if not is_superuser %}
+    // Handle extend button clicks for non-superuser
+    let currentLicenseId = null;
+    let currentLicenseCode = null;
+    let currentLicenseShopId = null;
+    const banksData = {{ banks_data| safe }};
+
+    document.querySelectorAll('.extend-btn').forEach(btn => {
+        btn.addEventListener('click', function () {
+            currentLicenseId = this.dataset.licenseId;
+            currentLicenseCode = this.dataset.licenseCode;
+            currentLicenseShopId = this.dataset.licenseShopId;
+
+            // Set license info in modal
+            document.getElementById('modal-license-shop-id').textContent = currentLicenseShopId;
+            document.getElementById('modal-license-code').textContent = currentLicenseCode;
+
+            // Load packages
+            loadPackages();
+
+            // Show modal
+            const modal = new bootstrap.Modal(document.getElementById('extendPackageModal'));
+            modal.show();
+        });
+    });
+
+    function loadPackages() {
+        fetch('{% url "licenses:get_packages" %}?group_code=tiktok')
+            .then(response => response.json())
+            .then(data => {
+                const packagesList = document.getElementById('packages-list');
+                if (data.packages && data.packages.length > 0) {
+                    packagesList.innerHTML = '';
+                    data.packages.forEach(pkg => {
+                        const packageCard = document.createElement('div');
+                        packageCard.className = 'card package-card';
+                        packageCard.style.cursor = 'pointer';
+                        packageCard.dataset.packageId = pkg.id;
+                        const amountText = pkg.amount ? new Intl.NumberFormat('vi-VN').format(pkg.amount) + ' VNĐ' : 'Miễn phí';
+                        packageCard.innerHTML = `
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <h6 class="mb-1">${pkg.name}</h6>
+                                    <small class="text-muted">Gia hạn thêm ${pkg.days} ngày</small>
+                                    <div class="mt-1">
+                                        <strong class="text-primary">${amountText}</strong>
                                     </div>
-                                    <button class="btn btn-primary btn-sm">Chọn</button>
                                 </div>
+                                <button class="btn btn-primary btn-sm">Chọn</button>
                             </div>
-                        `;
-                            packageCard.addEventListener('click', function () {
-                                selectPackage(pkg.id, pkg.name, pkg.days, pkg.amount);
-                            });
-                            packagesList.appendChild(packageCard);
+                        </div>
+                    `;
+                        packageCard.addEventListener('click', function () {
+                            selectPackage(pkg.id, pkg.name, pkg.days, pkg.amount);
                         });
-                    } else {
-                        packagesList.innerHTML = '<div class="alert alert-warning">Không có gói gia hạn nào.</div>';
-                    }
-                })
-                .catch(error => {
+                        packagesList.appendChild(packageCard);
+                    });
+                } else {
+                    packagesList.innerHTML = '<div class="alert alert-warning">Không có gói gia hạn nào.</div>';
+                }
+            })
+            .catch(error => {
+                console.error('Error loading packages:', error);
+                document.getElementById('packages-list').innerHTML = '<div class="alert alert-danger">Lỗi khi tải danh sách gói.</div>';
+            });
+    }
 
-                    // Generate QR code with payment info
-                    return fetch(`{% url "licenses:generate_qr" %}?payment_id=${paymentData.id}&package_id=${packageId}&license_id=${currentLicenseId}&license_type=tiktok`)
-                        .then(response => response.json())
-                        .then(qrData => {
-                            // Update payment info
-                            document.getElementById('payment-account-name').textContent = qrData.payment_info.account_name;
-                            document.getElementById('payment-account-number').textContent = qrData.payment_info.account_number;
-                            document.getElementById('payment-bank-name').textContent = qrData.payment_info.bank_name || getBankName(qrData.payment_info.bank_code);
-                            // Hiển thị nội dung chuyển khoản (ghi chú + số ngày + mã license)
-                            const transferContent = qrData.payment_info.transfer_content || qrData.payment_info.note || '';
-                            document.getElementById('payment-content').textContent = transferContent;
-                            const amountText = packageAmount ? new Intl.NumberFormat('vi-VN').format(packageAmount) + ' VNĐ' : 'Miễn phí';
-                            document.getElementById('selected-package-name').textContent = packageName + ' (' + packageDays + ' ngày)';
-                            document.getElementById('selected-package-amount').textContent = amountText;
+    function selectPackage(packageId, packageName, packageDays, packageAmount) {
+        // Load payment info first
+        fetch('{% url "licenses:get_payment_info" %}?group_code=tiktok')
+            .then(response => response.json())
+            .then(paymentData => {
+                if (paymentData.error) {
+                    alert('Lỗi: ' + paymentData.error);
+                    return;
+                }
 
-                            // Display QR code
-                            if (qrData.qr_code) {
-                                document.getElementById('qr-code-image').src = qrData.qr_code;
-                            } else {
-                                console.error('Error generating QR code:', qrData);
-                                alert('Không thể tạo QR code. Vui lòng thử lại.');
-                                return;
-                            }
+                // Generate QR code with payment info
+                return fetch(`{% url "licenses:generate_qr" %}?payment_id=${paymentData.id}&package_id=${packageId}&license_id=${currentLicenseId}&license_type=tiktok`)
+                    .then(response => response.json())
+                    .then(qrData => {
+                        // Update payment info
+                        document.getElementById('payment-account-name').textContent = qrData.payment_info.account_name;
+                        document.getElementById('payment-account-number').textContent = qrData.payment_info.account_number;
+                        document.getElementById('payment-bank-name').textContent = qrData.payment_info.bank_name || getBankName(qrData.payment_info.bank_code);
+                        // Hiển thị nội dung chuyển khoản (ghi chú + số ngày + mã license)
+                        const transferContent = qrData.payment_info.transfer_content || qrData.payment_info.note || '';
+                        document.getElementById('payment-content').textContent = transferContent;
+                        const amountText = packageAmount ? new Intl.NumberFormat('vi-VN').format(packageAmount) + ' VNĐ' : 'Miễn phí';
+                        document.getElementById('selected-package-name').textContent = packageName + ' (' + packageDays + ' ngày)';
+                        document.getElementById('selected-package-amount').textContent = amountText;
 
-                            // Show payment step
-                            showPaymentStep();
-                        });
-                })
-                .catch(error => {
-                    console.error('Error:', error);
-                    alert('Có lỗi xảy ra. Vui lòng thử lại.');
-                });
-        }
+                        // Display QR code
+                        if (qrData.qr_code) {
+                            document.getElementById('qr-code-image').src = qrData.qr_code;
+                        } else {
+                            console.error('Error generating QR code:', qrData);
+                            alert('Không thể tạo QR code. Vui lòng thử lại.');
+                            return;
+                        }
 
-        function getBankName(bankCode) {
-            const bank = banksData.find(b => b.code === bankCode || b.bin === bankCode);
-            return bank ? bank.name : bankCode;
-        }
+                        // Show payment step
+                        showPaymentStep();
+                    });
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Có lỗi xảy ra. Vui lòng thử lại.');
+            });
+    }
 
-        function showPaymentStep() {
-            document.getElementById('package-selection-step').style.display = 'none';
-            document.getElementById('payment-step').style.display = 'block';
-            document.getElementById('back-to-packages-btn').style.display = 'inline-block';
-        }
+    function getBankName(bankCode) {
+        const bank = banksData.find(b => b.code === bankCode || b.bin === bankCode);
+        return bank ? bank.name : bankCode;
+    }
 
-        function showPackageSelection() {
-            document.getElementById('package-selection-step').style.display = 'block';
-            document.getElementById('payment-step').style.display = 'none';
-            document.getElementById('back-to-packages-btn').style.display = 'none';
-        }
+    function showPaymentStep() {
+        document.getElementById('package-selection-step').style.display = 'none';
+        document.getElementById('payment-step').style.display = 'block';
+        document.getElementById('back-to-packages-btn').style.display = 'inline-block';
+    }
 
-        // Reset modal when closed
-        document.getElementById('extendPackageModal').addEventListener('hidden.bs.modal', function () {
-            showPackageSelection();
-            currentLicenseId = null;
-            currentLicenseCode = null;
-            currentLicenseShopId = null;
-        });
-        {% endif %}
-    </script>
-    {% endblock %}
+    function showPackageSelection() {
+        document.getElementById('package-selection-step').style.display = 'block';
+        document.getElementById('payment-step').style.display = 'none';
+        document.getElementById('back-to-packages-btn').style.display = 'none';
+    }
+
+    // Reset modal when closed
+    document.getElementById('extendPackageModal').addEventListener('hidden.bs.modal', function () {
+        showPackageSelection();
+        currentLicenseId = null;
+        currentLicenseCode = null;
+        currentLicenseShopId = null;
+    });
+    {% endif %}
+</script>
+{% endblock %}

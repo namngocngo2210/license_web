@@ -70,7 +70,30 @@ class UserApiKey(models.Model):
         return get_random_string(48)
 
 
+class ExtensionPackageGroup(models.Model):
+    name = models.CharField(max_length=200, verbose_name='Tên nhóm')
+    code = models.CharField(max_length=50, unique=True, verbose_name='Mã nhóm')
+    description = models.TextField(blank=True, null=True, verbose_name='Mô tả')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = 'Nhóm gói gia hạn'
+        verbose_name_plural = 'Nhóm gói gia hạn'
+
+    def __str__(self):
+        return f'{self.name} ({self.code})'
+
+
 class ExtensionPackage(models.Model):
+    group = models.ForeignKey(
+        ExtensionPackageGroup,
+        on_delete=models.CASCADE,
+        related_name='packages',
+        verbose_name='Nhóm gói',
+        null=True,  # Allow null temporarily for migration
+        blank=True
+    )
     name = models.CharField(max_length=200, verbose_name='Tên gói')
     days = models.PositiveIntegerField(verbose_name='Số ngày')
     amount = models.DecimalField(max_digits=15, decimal_places=0, default=0, verbose_name='Số tiền (VNĐ)')
@@ -88,6 +111,14 @@ class ExtensionPackage(models.Model):
 
 
 class PaymentInfo(models.Model):
+    group = models.ForeignKey(
+        ExtensionPackageGroup,
+        on_delete=models.CASCADE,
+        related_name='payment_infos',
+        verbose_name='Nhóm gói',
+        null=True,  # Allow null temporarily for migration
+        blank=True
+    )
     account_name = models.CharField(max_length=200, verbose_name='Tên tài khoản')
     account_number = models.CharField(max_length=50, verbose_name='Số tài khoản')
     bank_code = models.CharField(max_length=20, verbose_name='Mã ngân hàng')

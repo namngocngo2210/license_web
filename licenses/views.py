@@ -1018,7 +1018,13 @@ def profile(request):
 @login_required
 def get_extension_packages(request):
     """API endpoint để lấy danh sách gói gia hạn"""
-    packages = ExtensionPackage.objects.filter(is_active=True).order_by('days')
+    group_code = request.GET.get('group_code')
+    packages = ExtensionPackage.objects.filter(is_active=True)
+    
+    if group_code:
+        packages = packages.filter(group__code=group_code)
+        
+    packages = packages.order_by('days')
     data = [{'id': p.id, 'name': p.name, 'days': p.days, 'amount': float(p.amount)} for p in packages]
     return JsonResponse({'packages': data})
 
@@ -1026,7 +1032,13 @@ def get_extension_packages(request):
 @login_required
 def get_payment_info(request):
     """API endpoint để lấy thông tin chuyển khoản"""
-    payment = PaymentInfo.objects.filter(is_active=True).first()
+    group_code = request.GET.get('group_code')
+    payment_qs = PaymentInfo.objects.filter(is_active=True)
+    
+    if group_code:
+        payment_qs = payment_qs.filter(group__code=group_code)
+        
+    payment = payment_qs.first()
     if not payment:
         return JsonResponse({'error': 'Không có thông tin chuyển khoản'}, status=404)
     

@@ -25,8 +25,22 @@
                     <form method="get" class="row g-2 align-items-end">
                         <div class="col-12 col-md">
                             <label class="form-label">Tìm kiếm</label>
-                            <input type="text" name="q" value="{{ filters.q }}" class="form-control" <input
-                                type="number" class="form-control" name="days_min" value="{{ filters.days_min }}"
+                            <input type="text" name="q" value="{{ filters.q }}" class="form-control"
+                                placeholder="SĐT hoặc mã license">
+                        </div>
+                        <div class="col-6 col-md-2">
+                            <label class="form-label">Trạng thái</label>
+                            <select name="status" class="form-select">
+                                <option value="">Tất cả</option>
+                                <option value="active" {% if filters.status =='active' %}selected{% endif %}>Hoạt động
+                                </option>
+                                <option value="expired" {% if filters.status =='expired' %}selected{% endif %}>Hết hạn
+                                </option>
+                            </select>
+                        </div>
+                        <div class="col-6 col-md-2">
+                            <label class="form-label">Từ (ngày)</label>
+                            <input type="number" class="form-control" name="days_min" value="{{ filters.days_min }}"
                                 min="0" placeholder="VD: 0">
                         </div>
                         <div class="col-6 col-md-2">
@@ -40,7 +54,7 @@
                             <select name="user_id" class="form-select">
                                 <option value="" {% if not filters.user_id %}selected{% endif %}>Tất cả</option>
                                 {% for u in users %}
-                                <option value="{{ u.id }}" {% if filters.user_id and filters.user_id|stringformat:"s"==u.id|stringformat:"s" %}selected{% endif %}>{{ u.username }}</option>
+                                <option value="{{ u.id }}" {% if filters.user_id and filters.user_id|stringformat:"s" == u.id|stringformat:"s" %}selected{% endif %}>{{ u.username }}</option>
                                 {% endfor %}
                             </select>
                         </div>

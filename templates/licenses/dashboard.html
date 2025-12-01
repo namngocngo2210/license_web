@@ -96,7 +96,7 @@
                             <table class="table align-middle mb-0">
                                 <thead>
                                     <tr>
-                                        {% if is_superuser %}<th class="text-center" style="width:56px;"></th>{% endif %}
+                                        {% if is_superuser %}<th class="text-center" style="width:56px;"></th>{% endif%}
                                         <th class="text-center" style="width:18%;">Số điện thoại</th>
                                         <th class="text-center" style="width:30%;">Mã license</th>
                                         <th class="text-center" style="width:18%;">Hết hạn</th>
@@ -676,6 +676,5 @@
         currentPhone = null;
     });
     {% endif %}
-	{% endif %}
 </script>
 {% endblock %}

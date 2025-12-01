@@ -32,9 +32,9 @@
                             <label class="form-label">Trạng thái</label>
                             <select name="status" class="form-select">
                                 <option value="">Tất cả</option>
-                                <option value="active" {% if filters.status =='active' %}selected{% endif %}>Hoạt động
+                                <option value="active" {% if filters.status == 'active' %}selected{% endif %}>Hoạt động
                                 </option>
-                                <option value="expired" {% if filters.status =='expired' %}selected{% endif %}>Hết hạn
+                                <option value="expired" {% if filters.status == 'expired' %}selected{% endif %}>Hết hạn
                                 </option>
                             </select>
                         </div>

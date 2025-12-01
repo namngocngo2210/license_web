@@ -32,8 +32,10 @@
                             <label class="form-label">Trạng thái</label>
                             <select name="status" class="form-select">
                                 <option value="">Tất cả</option>
-                                <option value="active" {% if filters.status == 'active' %}selected{% endif %}>Hoạt động</option>
-                                <option value="expired" {% if filters.status == 'expired' %}selected{% endif %}>Hết hạn</option>
+                                <option value="active" {% if filters.status=='active' %}selected{% endif %}>Hoạt động
+                                </option>
+                                <option value="expired" {% if filters.status=='expired' %}selected{% endif %}>Hết hạn
+                                </option>
                             </select>
                         </div>
                         <div class="col-6 col-md-2">
@@ -52,7 +54,9 @@
                             <select name="user_id" class="form-select">
                                 <option value="" {% if not filters.user_id %}selected{% endif %}>Tất cả</option>
                                 {% for u in users %}
-                                <option value="{{ u.id }}" {% if filters.user_id and filters.user_id|stringformat:"s" == u.id|stringformat:"s" %}selected{% endif %}>{{u.username }}</option>
+                                <option value="{{ u.id }}" {% if filters.user_id and
+                                    filters.user_id|stringformat:"s"==u.id|stringformat:"s" %}selected{% endif %}>{{
+                                    u.username }}</option>
                                 {% endfor %}
                             </select>
                         </div>
@@ -296,20 +300,19 @@
                                 <li class="page-item disabled"><span class="page-link">«</span></li>
                                 {% endif %}
                                 {% for num in page_obj.paginator.page_range %}
-                                    {% if num == page_obj.number %}
-                                        <li class="page-item active"><span class="page-link">{{ num }}</span></li>
-                                    {% elif num >= page_obj.number|add:"-2" and num <= page_obj.number|add:"2" %} 
-                                        <li class="page-item"><a class="page-link" href="?page={{ num }}">{{ num }}</a></li>
+                                {% if num == page_obj.number %}
+                                <li class="page-item active"><span class="page-link">{{ num }}</span></li>
+                                {% elif num >= page_obj.number|add:'-2' and num <= page_obj.number|add:'2' %} <li
+                                    class="page-item"><a class="page-link" href="?page={{ num }}">{{ num }}</a></li>
                                     {% endif %}
-                                {% endfor %}
-                                {% if page_obj.has_next %}
+                                    {% endfor %}
+                                    {% if page_obj.has_next %}
                                     <li class="page-item">
                                         <a class="page-link" href="?page={{ page_obj.next_page_number }}">»</a>
                                     </li>
-                                {% else %}
+                                    {% else %}
                                     <li class="page-item disabled"><span class="page-link">»</span></li>
-                                {% endif %}
-                                
+                                    {% endif %}
                             </ul>
                         </nav>
                         {% endif %}
@@ -484,7 +487,6 @@
             return;
         }
 
-        // Function to get all checkboxes (including those not visible due to pagination)
         const getAllCheckboxes = () => {
             return document.querySelectorAll('.license-checkbox');
         };
@@ -494,7 +496,6 @@
             const anyChecked = Array.from(checkboxes).some(cb => cb.checked);
             deleteBtn.disabled = !anyChecked;
 
-            // Also update button appearance
             if (anyChecked) {
                 deleteBtn.classList.remove('disabled');
             } else {
@@ -512,7 +513,6 @@
             });
         }
 
-        // Use event delegation for checkboxes (handles dynamically loaded content)
         if (form) {
             form.addEventListener('change', function (e) {
                 if (e.target.classList.contains('license-checkbox')) {
@@ -527,10 +527,7 @@
                     updateButtonState();
                 }
             });
-        }
 
-        // Handle form submission
-        if (form) {
             form.addEventListener('submit', function (e) {
                 const checkboxes = getAllCheckboxes();
                 const checkedBoxes = Array.from(checkboxes).filter(cb => cb.checked);
@@ -541,7 +538,6 @@
                     return false;
                 }
 
-                // Ensure action is set
                 const actionInput = form.querySelector('input[name="action"]');
                 if (!actionInput || actionInput.value !== 'delete_selected') {
                     const hiddenInput = document.createElement('input');
@@ -557,7 +553,6 @@
     });
 
     {% if not is_superuser %}
-    // Handle extend button clicks for non-superuser
     let currentLicenseId = null;
     let currentLicenseCode = null;
     let currentPhone = null;
@@ -569,14 +564,11 @@
             currentLicenseCode = this.dataset.licenseCode;
             currentPhone = this.dataset.phone;
 
-            // Set license info in modal
             document.getElementById('modal-phone-number').textContent = currentPhone;
             document.getElementById('modal-license-code').textContent = currentLicenseCode;
 
-            // Load packages
             loadPackages();
 
-            // Show modal
             const modal = new bootstrap.Modal(document.getElementById('extendPackageModal'));
             modal.show();
         });
@@ -625,7 +617,6 @@
     }
 
     function selectPackage(packageId, packageName, packageDays, packageAmount) {
-        // Load payment info first
         fetch('{% url "licenses:get_payment_info" %}?group_code=zalo')
             .then(response => response.json())
             .then(paymentData => {
@@ -634,22 +625,20 @@
                     return;
                 }
 
-                // Generate QR code with payment info
                 return fetch(`{% url "licenses:generate_qr" %}?payment_id=${paymentData.id}&package_id=${packageId}&license_id=${currentLicenseId}`)
                     .then(response => response.json())
                     .then(qrData => {
-                        // Update payment info
                         document.getElementById('payment-account-name').textContent = qrData.payment_info.account_name;
                         document.getElementById('payment-account-number').textContent = qrData.payment_info.account_number;
                         document.getElementById('payment-bank-name').textContent = qrData.payment_info.bank_name || getBankName(qrData.payment_info.bank_code);
-                        // Hiển thị nội dung chuyển khoản (ghi chú + số điện thoại)
+
                         const transferContent = qrData.payment_info.transfer_content || qrData.payment_info.note || '';
                         document.getElementById('payment-content').textContent = transferContent;
+
                         const amountText = packageAmount ? new Intl.NumberFormat('vi-VN').format(packageAmount) + ' VNĐ' : 'Miễn phí';
                         document.getElementById('selected-package-name').textContent = packageName + ' (' + packageDays + ' ngày)';
                         document.getElementById('selected-package-amount').textContent = amountText;
 
-                        // Display QR code
                         if (qrData.qr_code) {
                             document.getElementById('qr-code-image').src = qrData.qr_code;
                         } else {
@@ -658,7 +647,6 @@
                             return;
                         }
 
-                        // Show payment step
                         showPaymentStep();
                     });
             })
@@ -685,7 +673,6 @@
         document.getElementById('back-to-packages-btn').style.display = 'none';
     }
 
-    // Reset modal when closed
     document.getElementById('extendPackageModal').addEventListener('hidden.bs.modal', function () {
         showPackageSelection();
         currentLicenseId = null;
